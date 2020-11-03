@@ -16,7 +16,10 @@ pub struct Rc<T> {
 impl<T> Rc<T> {
     pub fn new(value: T) -> Self {
         // move to the heap
-        let inner = Box::new(RcInner { value, refcount: Cell::new(1) });
+        let inner = Box::new(RcInner {
+            value,
+            refcount: Cell::new(1),
+        });
         // get raw pointer
         // SAFETY: Box does not give us a null pointer, but a heap allocation
         Rc {
@@ -31,7 +34,10 @@ impl<T> Clone for Rc<T> {
         let inner = unsafe { self.inner.as_ref() };
         let refcount = inner.refcount.get();
         inner.refcount.set(refcount + 1);
-        Rc { inner: self.inner, _marker: self._marker }
+        Rc {
+            inner: self.inner,
+            _marker: self._marker,
+        }
     }
 }
 
