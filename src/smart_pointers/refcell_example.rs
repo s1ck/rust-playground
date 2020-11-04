@@ -1,6 +1,9 @@
 // Chapter 15
 // A Use Case for Interior Mutability: Mock Objects
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 pub trait Messenger {
     fn send(&self, msg: &str);
 }
@@ -40,10 +43,17 @@ where
     }
 }
 
+#[derive(Debug)]
+enum List {
+    Cons(Rc<RefCell<i32>>, Rc<List>),
+    Nil,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::cell::RefCell;
+    use crate::smart_pointers::refcell_example::List::{Cons, Nil};
 
 
     struct MockMessenger {
@@ -67,7 +77,7 @@ mod tests {
     }
 
     #[test]
-    fn test() {
+    fn mock_messenger() {
         let c = MockMessenger::new();
         let mut tracker = LimitTracker::new(&c, 10);
 
@@ -77,5 +87,25 @@ mod tests {
         tracker.set_value(10);
 
         assert_eq!(c.len(), 3)
+    }
+
+    #[test]
+    fn mutable_list() {
+        let v = Rc::new(RefCell::new(42));
+
+        let a = Rc::new(Cons(Rc::clone(&v), Rc::new(Nil)));
+        let b = Cons(Rc::new(RefCell::new(6)), Rc::clone(&a));
+        let c = Cons(Rc::new(RefCell::new(2)), Rc::clone(&a));
+
+        println!("a before = {:?}", a);
+        println!("b before = {:?}", b);
+        println!("c before = {:?}", c);
+
+        *v.borrow_mut() += 10;
+
+        println!("a after = {:?}", a);
+        println!("b after = {:?}", b);
+        println!("c after = {:?}", c);
+
     }
 }
