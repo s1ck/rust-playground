@@ -1,3 +1,4 @@
+// Chapter 15
 // A Use Case for Interior Mutability: Mock Objects
 
 pub trait Messenger {
@@ -36,5 +37,45 @@ where
             self.messenger
                 .send("Warning: You've used up over 75% of your quota!");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+
+
+    struct MockMessenger {
+        messages: RefCell<Vec<String>>,
+    }
+
+    impl MockMessenger {
+        fn new() -> Self {
+            MockMessenger { messages: RefCell::new(vec![]) }
+        }
+
+        fn len(&self) -> usize {
+            self.messages.borrow().len()
+        }
+    }
+
+    impl Messenger for MockMessenger {
+        fn send(&self, msg: &str) {
+            self.messages.borrow_mut().push(String::from(msg))
+        }
+    }
+
+    #[test]
+    fn test() {
+        let c = MockMessenger::new();
+        let mut tracker = LimitTracker::new(&c, 10);
+
+        tracker.set_value(5);
+        tracker.set_value(8);
+        tracker.set_value(9);
+        tracker.set_value(10);
+
+        assert_eq!(c.len(), 3)
     }
 }
