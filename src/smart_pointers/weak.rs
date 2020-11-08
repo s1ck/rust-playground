@@ -15,8 +15,6 @@ struct Node {
 
 #[cfg(test)]
 mod tests {
-    use crate::smart_pointers::refcell::Ref;
-
     use super::*;
 
     #[test]
