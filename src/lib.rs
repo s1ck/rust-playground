@@ -1,9 +1,4 @@
+// chapter 3
+pub mod common_programming_concepts;
+// chapter 15
 pub mod smart_pointers;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
