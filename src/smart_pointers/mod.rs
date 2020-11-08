@@ -8,3 +8,4 @@ mod rc;
 mod rc_example;
 mod refcell;
 mod refcell_example;
+mod weak;
