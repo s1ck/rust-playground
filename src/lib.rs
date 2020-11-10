@@ -4,5 +4,7 @@ pub mod common_programming_concepts;
 pub mod ownership;
 // chapter 5
 pub mod structs;
+// chapter 6
+pub mod enums;
 // chapter 15
 pub mod smart_pointers;
