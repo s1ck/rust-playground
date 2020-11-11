@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use std::rc::Rc;
 
 enum List {
@@ -28,10 +27,10 @@ mod tests {
             Rc::new(RcList::Cons(10, Rc::new(RcList::Nil))),
         ));
         println!("{}", Rc::strong_count(&shared));
-        let x = RcList::Cons(3, Rc::clone(&shared));
+        let _ = RcList::Cons(3, Rc::clone(&shared));
         println!("{}", Rc::strong_count(&shared));
         {
-            let y = RcList::Cons(4, Rc::clone(&shared));
+            let _ = RcList::Cons(4, Rc::clone(&shared));
             println!("{}", Rc::strong_count(&shared));
         }
         println!("{}", Rc::strong_count(&shared));

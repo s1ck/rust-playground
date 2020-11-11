@@ -10,3 +10,4 @@ mod refcell;
 mod refcell_example;
 mod reference_cycle;
 mod weak_references;
+mod weak;
