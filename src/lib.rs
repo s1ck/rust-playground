@@ -6,5 +6,7 @@ pub mod ownership;
 pub mod structs;
 // chapter 6
 pub mod enums;
+// chapter 8
+pub mod collections;
 // chapter 15
 pub mod smart_pointers;
