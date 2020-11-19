@@ -8,5 +8,7 @@ pub mod structs;
 pub mod enums;
 // chapter 8
 pub mod collections;
+// chapter 9
+pub mod error_handling;
 // chapter 15
 pub mod smart_pointers;
