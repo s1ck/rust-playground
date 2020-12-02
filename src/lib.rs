@@ -10,5 +10,7 @@ pub mod enums;
 pub mod collections;
 // chapter 9
 pub mod error_handling;
+// chapter 10
+pub mod generics;
 // chapter 15
 pub mod smart_pointers;
