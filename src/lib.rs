@@ -12,5 +12,7 @@ pub mod collections;
 pub mod error_handling;
 // chapter 10
 pub mod generics;
+// chapter 13
+pub mod iterators_closures;
 // chapter 15
 pub mod smart_pointers;
