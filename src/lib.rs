@@ -14,5 +14,7 @@ pub mod error_handling;
 pub mod generics;
 // chapter 13
 pub mod iterators_closures;
+// chapter 14 cargo and crates.io
+pub mod cargo_crates;
 // chapter 15
 pub mod smart_pointers;
