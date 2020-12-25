@@ -1,9 +1,15 @@
-[package]
-name = "rust-book"
-version = "0.1.0"
-authors = ["Martin Junghanns <martin.junghanns@neo4j.com>"]
-edition = "2018"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+members = [
+    "common_programming_concepts", # chapter 3
+    "ownership", # chapter 4
+    "structs", # chapter 5
+    "enums", # chapter 6
+    "collections", # chapter 8
+    "error_handling", # chapter 9
+    "generics", # chapter 10
+    "iterators_closures", # chapter 13
+    "cargo_crates", # chapter 14
+    "smart_pointers", # chapter 15
+]
 
-[dependencies]
