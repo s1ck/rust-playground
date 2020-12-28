@@ -51,10 +51,34 @@ enum List {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::cell::RefCell;
+
     use crate::refcell_example::List::{Cons, Nil};
 
+    use super::*;
+
+    #[test]
+    fn refcell() {
+        let x = 42;
+        let y = &x;
+
+        // let z = &mut x; // does not work
+        println!("x = {} y = {}", x, *y);
+
+        let x2 = RefCell::new(42);
+        let y2 = &x2;
+        let z2 = &y2;
+
+        {
+            let mut foo = y2.borrow_mut();
+            *foo += 12;
+            // will panic since the value has already been mutably borrowed
+            let bar = x2.borrow();
+            println!("x inner = {:?}", *bar);
+        }
+
+        println!("x = {:?} y = {:?} z = {:?}", x2, *y2, **z2);
+    }
 
     struct MockMessenger {
         messages: RefCell<Vec<String>>,
@@ -62,7 +86,9 @@ mod tests {
 
     impl MockMessenger {
         fn new() -> Self {
-            MockMessenger { messages: RefCell::new(vec![]) }
+            MockMessenger {
+                messages: RefCell::new(vec![]),
+            }
         }
 
         fn len(&self) -> usize {
@@ -106,6 +132,5 @@ mod tests {
         println!("a after = {:?}", a);
         println!("b after = {:?}", b);
         println!("c after = {:?}", c);
-
     }
 }
