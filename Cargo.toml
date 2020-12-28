@@ -11,5 +11,6 @@ members = [
     "iterators_closures", # chapter 13
     "cargo_crates", # chapter 14
     "smart_pointers", # chapter 15
+    "concurrency", # chapter 16
 ]
 
