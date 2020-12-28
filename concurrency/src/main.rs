@@ -1,11 +1,14 @@
 use std::thread;
 use std::time::Duration;
-use std::sync::mpsc;
+use std::sync::{mpsc, Mutex, Arc};
+use std::rc::Rc;
 
 fn main() {
     // thread_spawn();
     // move_semantics();
-    channels();
+    // channels();
+    // mutex_single_thread();
+    mutex_multi_thread();
 }
 
 fn thread_spawn() {
@@ -71,6 +74,37 @@ fn channels() {
     for received in rx {
         println!("Got: {}", received);
     }
+}
+
+fn mutex_single_thread() {
+    let m = Mutex::new(5);
+
+    {
+        let mut num = m.lock().unwrap();
+        *num = 6;
+    }
+
+    println!("m = {:?}", m);
+}
+
+fn mutex_multi_thread() {
+    let counter = Arc::new(Mutex::new(0));
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let counter = Arc::clone(&counter);
+        let handle = thread::spawn(move || {
+           let mut num = counter.lock().unwrap();
+            *num += 1;
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Result: {}", *counter.lock().unwrap());
 }
 
 
