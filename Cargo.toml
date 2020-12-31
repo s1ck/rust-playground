@@ -13,5 +13,6 @@ members = [
     "smart_pointers", # chapter 15
     "concurrency", # chapter 16
     "oop", # chapter 17
+    "pattern_matching", # chapter 18
 ]
 
