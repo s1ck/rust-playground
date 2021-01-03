@@ -15,5 +15,7 @@ members = [
     "oop", # chapter 17
     "pattern_matching", # chapter 18,
     "advanced", # chapter 19
+    "hello_macro", # chapter 19
+    "hello_macro_derive", # chapter 19
 ]
 

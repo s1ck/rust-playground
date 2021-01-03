@@ -1,5 +1,5 @@
 [package]
-name = "oop"
+name = "hello_macro"
 version = "0.1.0"
 authors = ["Martin Junghanns <nerdfaktor42@mailbox.org>"]
 edition = "2018"
