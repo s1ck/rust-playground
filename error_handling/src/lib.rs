@@ -17,12 +17,12 @@ mod tests {
 
     #[test]
     fn fopen() {
-        let f = File::open("hello.txt");
+        let f = File::open("webserver.txt");
 
         let mut f = match f {
             Ok(file) => file,
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => match File::create("hello.txt") {
+                ErrorKind::NotFound => match File::create("webserver.txt") {
                     Ok(file) => file,
                     Err(error) => panic!("Problem opening the file: {:?}", error),
                 }
@@ -37,9 +37,9 @@ mod tests {
 
     #[test]
     fn fopen_unwrap() {
-        let f = File::open("hello.txt");
+        let f = File::open("webserver.txt");
         let mut f = f.unwrap_or_else(|error| if error.kind() == ErrorKind::NotFound {
-            File::create("hello.txt").unwrap_or_else(|error| panic!("Problem opening the file: {:?}", error))
+            File::create("webserver.txt").unwrap_or_else(|error| panic!("Problem opening the file: {:?}", error))
         } else {
             panic!("Problem opening the file: {:?}", error)
         });

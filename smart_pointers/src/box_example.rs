@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn deref_coercion_test() {
-        let s = MyBox::new(String::from("hello"));
+        let s = MyBox::new(String::from("webserver"));
         deref_coercion(&s);
         // same as
         deref_coercion(&(*s)[..]);

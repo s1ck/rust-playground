@@ -70,7 +70,7 @@ impl<T> Cell<T> {
 //
 //     // #[test]
 //     // fn bad2() {
-//     //     let x = Cell::new(String::from("hello"));
+//     //     let x = Cell::new(String::from("webserver"));
 //     //     let first: &String = x.get();
 //     //     x.set(String::new());
 //     //     x.set(String::from("world"));

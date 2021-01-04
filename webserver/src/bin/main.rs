@@ -25,10 +25,10 @@ fn handle_stream(mut stream: TcpStream) {
 
 
     let (status_line, contents) = if buffer.starts_with(get) {
-        ("HTTP/1.1 200 OK\r\n\r\n{}", fs::read_to_string("hello.html").unwrap())
+        ("HTTP/1.1 200 OK\r\n\r\n{}", fs::read_to_string("webserver.html").unwrap())
     } else if buffer.starts_with(sleep) {
         thread::sleep(Duration::from_secs(5));
-        ("HTTP/1.1 200 OK\r\n\r\n{}", fs::read_to_string("hello.html").unwrap())
+        ("HTTP/1.1 200 OK\r\n\r\n{}", fs::read_to_string("webserver.html").unwrap())
     } else {
         ("HTTP/1.1 404 NOT FOUND\r\n\r\n", fs::read_to_string("404.html").unwrap())
     };

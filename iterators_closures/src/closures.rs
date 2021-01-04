@@ -82,7 +82,7 @@ mod tests {
     fn cacher_str_usize() {
         let mut cacher = Cacher::new(|x: &str| x.len());
 
-        let _v1 = cacher.value("hello");
+        let _v1 = cacher.value("webserver");
         let v2 = cacher.value("foobar");
 
         assert_eq!(*v2, 6)

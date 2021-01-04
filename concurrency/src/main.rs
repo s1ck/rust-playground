@@ -45,7 +45,7 @@ fn channels() {
 
     thread::spawn(move || {
         let messages = vec![
-            String::from("hello"),
+            String::from("webserver"),
             String::from("from"),
             String::from("the"),
             String::from("thread"),

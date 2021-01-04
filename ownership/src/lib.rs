@@ -18,7 +18,7 @@ mod tests {
 
     #[test]
     fn deep_copy() {
-        let s = String::from("hello");
+        let s = String::from("webserver");
         // deep copy
         let t = s.clone();
         println!("s = {}, t = {}", s, t);
@@ -84,7 +84,7 @@ mod tests {
     }
 
     fn gives_ownership() -> String {
-        String::from("hello")
+        String::from("webserver")
     }
 
     fn takes_and_gives_back(a: String) -> String {
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn slice() {
-        let s = String::from("hello world");
+        let s = String::from("webserver world");
         let t = first_word(&s);
         println!("t = {}", t);
 
