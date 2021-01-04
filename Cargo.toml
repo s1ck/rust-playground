@@ -17,5 +17,6 @@ members = [
     "advanced", # chapter 19
     "hello_macro", # chapter 19
     "hello_macro_derive", # chapter 19
+    "hello", # chapter 20
 ]
 
