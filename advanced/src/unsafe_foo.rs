@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use std::slice::{from_raw_parts, from_raw_parts_mut};
+    use std::slice::{from_raw_parts_mut};
 
     #[test]
     fn raw_pointers() {

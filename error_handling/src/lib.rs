@@ -31,7 +31,7 @@ mod tests {
         };
 
         let mut buf = String::new();
-        let x = f.read_to_string(&mut buf);
+        let _x = f.read_to_string(&mut buf);
         buf.lines().for_each(|l| println!("{}", l));
     }
 
@@ -45,13 +45,13 @@ mod tests {
         });
 
         let mut buf = String::new();
-        let x = f.read_to_string(&mut buf);
+        let _x = f.read_to_string(&mut buf);
         buf.lines().for_each(|l| println!("{}", l));
     }
 
     #[test]
     fn fopen_expect() {
-        let f = File::open("foobar").expect("File foobar does not exist");
+        let _f = File::open("foobar").expect("File foobar does not exist");
     }
 
     fn read_username_from_file() -> Result<String, io::Error> {

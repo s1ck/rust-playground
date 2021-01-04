@@ -34,19 +34,19 @@ mod tests {
 
     #[test]
     fn enums() {
-        let four = IpAddrKind::V4;
+        let _four = IpAddrKind::V4;
 
-        let home = IpAddr {
+        let _home = IpAddr {
             kind: IpAddrKind::V4,
             address: String::from("127.0.0.1"),
         };
 
-        let loopback = IpAddr {
+        let _loopback = IpAddr {
             kind: IpAddrKind::V6,
             address: String::from("::1"),
         };
 
-        let home = IpAddrEnum::V4(127, 0, 0, 1);
+        let _home = IpAddrEnum::V4(127, 0, 0, 1);
 
         let m = Message::Move { x: 13, y: 37 };
         m.call();
@@ -54,9 +54,9 @@ mod tests {
 
     #[test]
     fn options() {
-        let some_number = Some(42);
-        let some_string = Some("string");
-        let absent_number: Option<i32> = None;
+        let _some_number = Some(42);
+        let _some_string = Some("string");
+        let _absent_number: Option<i32> = None;
     }
 
     #[derive(Debug)]

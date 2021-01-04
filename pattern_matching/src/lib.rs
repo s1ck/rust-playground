@@ -6,7 +6,7 @@ mod tests {
         let is_tuesday = false;
         let age: Result<u8, _> = "34".parse();
 
-        if let Some(color) = favorite_color {} else if is_tuesday {} else if let Ok(age) = age {} else {
+        if let Some(_color) = favorite_color {} else if is_tuesday {} else if let Ok(_age) = age {} else {
             // smooth
         }
     }
@@ -25,7 +25,7 @@ mod tests {
 
     #[test]
     fn let_test() {
-        if let (x, y, None) = (1, 2, Some(3)) {
+        if let (_x, _y, None) = (1, 2, Some(3)) {
             println!("match");
         } else {
             println!("no match");
@@ -56,7 +56,7 @@ mod tests {
     #[test]
     fn match_named() {
         let x = Some(42);
-        let y = 10;
+        let _y = 10;
 
         match x {
             Some(50) => println!("foo"),
@@ -202,10 +202,10 @@ mod tests {
         let msg = Message::Hello { id: 5 };
 
         match msg {
-            Message::Hello { id: id_variable @ 3...7 } => println!("found id in range 3 to 7: {}", id_variable),
+            Message::Hello { id: id_variable @ 3..=7 } => println!("found id in range 3 to 7: {}", id_variable),
             // doesn't know which one it is ... can't assign id in pattern
-            Message::Hello { id: 10...12 } => println!("found id in range 10 to 12"),
-            Message::Hello { id: id } => println!("found some other id"),
+            Message::Hello { id: 10..=12 } => println!("found id in range 10 to 12"),
+            Message::Hello { id: _ } => println!("found some other id"),
         }
     }
 }

@@ -65,7 +65,7 @@ mod tests {
     fn iter_sum() {
         let v1 = vec![1, 2, 3];
 
-        let mut v1_iter = v1.iter();
+        let v1_iter = v1.iter();
 
         // consumes v1_iter
         // sum is a "consuming adaptor"

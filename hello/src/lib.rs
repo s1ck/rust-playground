@@ -1,6 +1,6 @@
 use std::sync::{Arc, mpsc, Mutex};
 use std::thread;
-use std::thread::{JoinHandle, Thread};
+use std::thread::{JoinHandle};
 
 pub struct ThreadPool {
     workers: Vec<Worker>,

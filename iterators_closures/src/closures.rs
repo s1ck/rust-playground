@@ -1,7 +1,7 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::iter::Map;
+
 use std::thread;
 use std::time::Duration;
 
@@ -72,7 +72,7 @@ mod tests {
     fn cacher_u32_u32() {
         let mut cacher = Cacher::new(|x| x);
 
-        let v1 = cacher.value(1);
+        let _v1 = cacher.value(1);
         let v2 = cacher.value(2);
 
         assert_eq!(*v2, 2)
@@ -82,7 +82,7 @@ mod tests {
     fn cacher_str_usize() {
         let mut cacher = Cacher::new(|x: &str| x.len());
 
-        let v1 = cacher.value("hello");
+        let _v1 = cacher.value("hello");
         let v2 = cacher.value("foobar");
 
         assert_eq!(*v2, 6)

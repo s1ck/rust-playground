@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
+    
     use std::fmt::Display;
 
     struct Point<T> {
@@ -26,7 +26,7 @@ mod tests {
 
     #[test]
     fn type_specific_impl() {
-        let p1: Point<i32> = Point { x: 13, y: 37 };
+        let _p1: Point<i32> = Point { x: 13, y: 37 };
         let p2: Point<f32> = Point { x: 13.0, y: 37.0 };
         // only available on p2
         println!("{}", p2.distance())

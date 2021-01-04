@@ -9,7 +9,7 @@ struct Node {
 
 #[cfg(test)]
 mod tests {
-    use std::cell::Ref;
+    
 
     use super::*;
 
@@ -20,7 +20,7 @@ mod tests {
             children: RefCell::new(vec![]),
         });
 
-        let branch = Rc::new(Node {
+        let _branch = Rc::new(Node {
             value: 5,
             children: RefCell::new(vec![Rc::clone(&leaf)]),
         });

@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use std::cell::Cell;
+    
     use std::collections::HashMap;
-    use std::iter::Map;
-    use std::rc::Rc;
+    
+    
 
     #[derive(Debug)]
     enum Element {
@@ -27,7 +27,7 @@ mod tests {
         let s2 = "barbaz".to_string();
 
         s1.push_str("baz");
-        let s2 = format!("{}foo", s2);
+        let _s2 = format!("{}foo", s2);
     }
 
     fn mean(a: &Vec<usize>) -> f64 {
