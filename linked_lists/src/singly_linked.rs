@@ -59,6 +59,15 @@ impl<T> Node<T> {
     }
 }
 
+impl<T> Drop for LinkedList<T> {
+    fn drop(&mut self) {
+        let mut old_head = self.head.take();
+        while let Some(mut next_node) = old_head {
+            old_head = next_node.next.take()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
