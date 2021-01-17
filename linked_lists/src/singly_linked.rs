@@ -31,6 +31,10 @@ impl<T> LinkedList<T> {
     pub fn peek(&self) -> Option<&T> {
         self.head.as_ref().map(|node| &node.element)
     }
+
+    pub fn peek_mut(&mut self) -> Option<&mut T> {
+        self.head.as_mut().map(|node| &mut node.element)
+    }
 }
 
 // nice .. implement functions only for lists that contain u32
@@ -84,7 +88,9 @@ mod tests {
         assert_eq!(Some(&84), l.peek());
         assert_eq!(Some(84), l.pop());
         assert_eq!(Some(&42), l.peek());
-        assert_eq!(Some(42), l.pop());
+        assert_eq!(Some(&mut 42), l.peek_mut());
+        l.peek_mut().map(|value| *value = 43);
+        assert_eq!(Some(43), l.pop());
         assert_eq!(None, l.peek());
         assert_eq!(None, l.pop());
     }
