@@ -136,6 +136,19 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Instant;
+
+    #[test]
+    fn drop_test() {
+        let now = Instant::now();
+        {
+            let mut list = LinkedList::new();
+            for i in 0..10_000_000 {
+                list.push(i);
+            }
+        }
+        println!("{}", now.elapsed().as_millis());
+    }
 
     #[test]
     fn node_test() {
