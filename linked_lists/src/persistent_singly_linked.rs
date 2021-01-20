@@ -82,7 +82,7 @@ mod test {
     fn drop_test() {
         let now = Instant::now();
         {
-            let mut list = LinkedList::new();
+            let list = LinkedList::new();
             for i in 0..10_000_000 {
                 list.append(i);
             }
