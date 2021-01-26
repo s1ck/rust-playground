@@ -148,8 +148,6 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefMut;
-
     use super::*;
 
     #[test]
