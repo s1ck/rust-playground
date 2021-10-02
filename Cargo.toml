@@ -22,4 +22,5 @@ members = [
     "traits",                      # https://github.com/pretzelhammer/rust-blog/blob/master/posts/tour-of-rusts-standard-library-traits.md
     "str_left_pad",                # Coding challenge 4 by Tim McNamara
     "coordinates",                 # Coding challenge 5 by Tim McNamara
+    "data_in_depth",               # Chapter 5 of Rust in Action
 ]
