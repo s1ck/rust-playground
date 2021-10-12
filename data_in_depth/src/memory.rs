@@ -95,3 +95,14 @@ fn run() {
     ffi();
     unsafe_wtf();
 }
+
+struct Foo {
+
+}
+
+#[test]
+fn feature() {
+    let x= std::mem::size_of::<Foo>();
+
+    println!("{}", x);
+}
