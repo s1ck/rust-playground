@@ -1,3 +1,5 @@
+mod hexdump;
+
 use bincode::serialize as to_binc;
 use serde_cbor::to_vec as to_cbor;
 use serde_derive::Serialize;

@@ -25,4 +25,5 @@ members = [
     "data_in_depth",               # Chapter 5 of Rust in Action
     "particles",                   # Chapter 6 of Rust in Action
     "files",                       # Chapter 7 of Rust in Action
+    "hexdump",                     # Chapter 7 of Rust in Action
 ]
