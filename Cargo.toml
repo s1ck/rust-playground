@@ -26,4 +26,5 @@ members = [
     "particles",                   # Chapter 6 of Rust in Action
     "files",                       # Chapter 7 of Rust in Action
     "hexdump",                     # Chapter 7 of Rust in Action
+    "intersecting-rays",           # Coding challenge 9 by Tim McNamara
 ]
