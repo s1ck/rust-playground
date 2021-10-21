@@ -9,7 +9,6 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use crc::crc32;
 
 type ByteString = Vec<u8>;
-
 type ByteStr = [u8];
 
 #[derive(Debug)]

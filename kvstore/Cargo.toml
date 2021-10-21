@@ -6,8 +6,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bincode = "1"
 byteorder = "1.2"
 crc = "1.7"
+serde = "1"
+serde_derive = "1"
 
 [lib]
 name = "libkvstore"
@@ -16,3 +19,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "kvs_mem"
 path = "src/kvs_mem.rs"
+
+[[bin]]
+name = "kvs_disk"
+path = "src/kvs_disk.rs"
