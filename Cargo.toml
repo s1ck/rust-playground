@@ -28,4 +28,6 @@ members = [
     "hexdump",                     # Chapter 7 of Rust in Action
     "kvstore",                     # Chapter 7 of Rust in Action
     "intersecting-rays",           # Coding challenge 9 by Tim McNamara
+    "networking",                  # Chapter 8 of Rust in Action
+    "dns",                         # Chapter 8 of Rust in Action (DNS resolver)
 ]
