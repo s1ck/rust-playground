@@ -31,4 +31,5 @@ members = [
     "networking",                  # Chapter 8 of Rust in Action
     "dns",                         # Chapter 8 of Rust in Action (DNS resolver)
     "codewars",                    # Codewars exercises
+    "custom_errors",               # Chapter 8 of Rust in Action
 ]
