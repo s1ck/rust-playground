@@ -33,4 +33,5 @@ members = [
     "codewars",                    # Codewars exercises
     "custom_errors",               # Chapter 8 of Rust in Action
     "macgen",                      # Chapter 8 of Rust in Action
+    "clock",                       # Chapter 9 of Rust in Action
 ]
