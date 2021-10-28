@@ -34,4 +34,5 @@ members = [
     "custom_errors",               # Chapter 8 of Rust in Action
     "macgen",                      # Chapter 8 of Rust in Action
     "clock",                       # Chapter 9 of Rust in Action
+    "threads",                     # Chapter 10 of Rust in Action
 ]
