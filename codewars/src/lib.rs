@@ -414,3 +414,280 @@ fn tests_bouncing_ball() {
     testequal(40.0, 0.4, 10.0, 3);
     testequal(10.0, 0.6, 10.0, -1);
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Direction {
+    North,
+    East,
+    West,
+    South,
+}
+
+fn dir_reduc_loop(arr: &[Direction]) -> Vec<Direction> {
+    let mut res = Vec::with_capacity(arr.len());
+
+    for i in 0..arr.len() {
+        match (res.last(), arr[i]) {
+            (Some(Direction::North), Direction::South)
+            | (Some(Direction::East), Direction::West)
+            | (Some(Direction::West), Direction::East)
+            | (Some(Direction::South), Direction::North) => {
+                res.pop();
+            }
+            _ => res.push(arr[i]),
+        }
+    }
+
+    res
+}
+
+fn dir_reduc(arr: &[Direction]) -> Vec<Direction> {
+    arr.iter()
+        .fold(Vec::new(), |mut res, next| match (res.last(), *next) {
+            (Some(Direction::North), Direction::South)
+            | (Some(Direction::East), Direction::West)
+            | (Some(Direction::West), Direction::East)
+            | (Some(Direction::South), Direction::North) => {
+                res.pop();
+                res
+            }
+            _ => {
+                res.push(*next);
+                res
+            }
+        })
+}
+
+#[cfg(test)]
+mod dir_reduc_tests {
+    use super::{
+        dir_reduc,
+        Direction::{self, *},
+    };
+
+    #[test]
+    fn basic() {
+        let a = [North, South, South, East, West, North, West];
+        assert_eq!(dir_reduc(&a), [West]);
+
+        let a = [North, West, South, East];
+        assert_eq!(dir_reduc(&a), [North, West, South, East]);
+    }
+}
+
+const LAST_DIGITS: [[i32; 5]; 10] = [
+    [1, 0, 0, 0, 0], // 0
+    [1, 1, 0, 0, 0], // 1
+    [4, 6, 2, 4, 8], // 2
+    [4, 1, 3, 9, 7], // 3
+    [2, 6, 4, 0, 0], // 4
+    [1, 5, 0, 0, 0], // 5
+    [1, 6, 0, 0, 0], // 6
+    [4, 1, 7, 9, 3], // 7
+    [4, 6, 8, 4, 2], // 8
+    [2, 1, 9, 0, 0], // 9
+];
+
+fn modulo(s: &str, n: i32) -> i32 {
+    let offset = '0' as i32;
+    let mut res = 0;
+    for c in s.chars() {
+        res = (res * 10 + c as i32 - offset) % n;
+    }
+    res
+}
+
+fn last_digit(str1: &str, str2: &str) -> i32 {
+    if str2 == "0" {
+        return 1;
+    }
+
+    let x_last_digit = &str1[str1.len() - 1..].parse::<usize>().unwrap();
+
+    let divisor = LAST_DIGITS[*x_last_digit][0];
+    let y_mod = modulo(str2, divisor) as usize;
+
+    LAST_DIGITS[*x_last_digit][y_mod + 1]
+}
+
+#[test]
+fn test_modulo() {
+    assert_eq!(modulo("4", 4), 0);
+    assert_eq!(modulo("14", 4), 2);
+    assert_eq!(modulo("144", 4), 0);
+    assert_eq!(modulo("1337", 42), 35);
+    assert_eq!(modulo("123456789", 42), 15);
+    assert_eq!(modulo("123456789654234", 42), 36);
+    assert_eq!(
+        modulo(
+            "68819615221552997273737174557165657483427362207517952651",
+            4
+        ),
+        3
+    );
+}
+
+#[test]
+fn test_last_digit() {
+    assert_eq!(last_digit("4", "0"), 1);
+    assert_eq!(last_digit("4", "1"), 4);
+    assert_eq!(last_digit("4", "2"), 6);
+    assert_eq!(last_digit("9", "7"), 9);
+    assert_eq!(last_digit("10", "10000000000"), 0);
+    assert_eq!(last_digit("1606938044258990275541962092341162602522202993782792835301376","2037035976334486086268445688409378161051468393665936250636140449354381299763336706183397376"), 6);
+    assert_eq!(
+        last_digit(
+            "3715290469715693021198967285016729344580685479654510946723",
+            "68819615221552997273737174557165657483427362207517952651",
+        ),
+        7,
+    );
+    assert_eq!(
+        last_digit(
+            "542028",
+            "84438841612238129190758601244058634992436629046705"
+        ),
+        8
+    );
+}
+
+fn snail(matrix: &[Vec<i32>]) -> Vec<i32> {
+    fn traverse_border(m: &[&[i32]]) -> Vec<i32> {
+        let mut border = Vec::<i32>::new();
+        let length = m.len();
+
+        for col in 0..length {
+            border.push(m[0][col]);
+        }
+        for row in 1..length {
+            border.push(m[row][length - 1]);
+        }
+        for col in (0..length - 1).rev() {
+            border.push(m[length - 1][col]);
+        }
+        for row in (1..length - 1).rev() {
+            border.push(m[row][0]);
+        }
+
+        border
+    }
+
+    let mut snail = Vec::new();
+    let mut it = 0;
+
+    let len = if matrix.is_empty() {
+        0
+    } else {
+        matrix[0].len()
+    };
+
+    let element_count = usize::pow(len, 2);
+
+    while (snail.len() < element_count) {
+        let inner_matrix = &matrix[it..len - it]
+            .iter()
+            .map(|row| &row[it..row.len() - it])
+            .collect::<Vec<_>>();
+
+        snail.extend(traverse_border(&inner_matrix));
+        it += 1;
+    }
+
+    snail
+}
+
+#[cfg(test)]
+mod snail_tests {
+    use super::*;
+
+    #[test]
+    fn sample_test1() {
+        let square = &[vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]];
+        let expected = vec![1, 2, 3, 6, 9, 8, 7, 4, 5];
+        assert_eq!(snail(square), expected);
+    }
+
+    #[test]
+    fn sample_test2() {
+        let square = &[vec![1, 2, 3], vec![8, 9, 4], vec![7, 6, 5]];
+        let expected = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
+        assert_eq!(snail(square), expected);
+    }
+
+    #[test]
+    fn sample_test3() {
+        let square: &[Vec<i32>; 1] = &[Vec::new()];
+        let expected = Vec::new();
+        assert_eq!(snail(square), expected, "Failed with empty input");
+    }
+
+    #[test]
+    fn sample_test4() {
+        let square = &[vec![1]];
+        let expected = vec![1];
+        assert_eq!(snail(square), expected);
+    }
+
+    #[test]
+    fn sample_test5() {
+        let square = &[];
+        assert_eq!(snail(square), &[]);
+    }
+}
+
+fn format_duration(seconds: u64) -> String {
+    fn format(n: u64, singular: &str) -> Option<String> {
+        if n > 0 {
+            let suffix = if n > 1 {
+                format!("{}s", singular)
+            } else {
+                singular.to_string()
+            };
+            return Some(format!("{} {}", n, suffix));
+        }
+        None
+    }
+
+    if seconds == 0 {
+        return String::from("now");
+    }
+
+    let s = format(seconds % 60, "second");
+    let m = format(seconds / 60 % 60, "minute");
+    let h = format(seconds / (60 * 60) % 24, "hour");
+    let d = format(seconds / (3600 * 24) % 365, "day");
+    let y = format(seconds / (86400 * 365) % 365, "year");
+
+    let parts = vec![y, d, h, m, s]
+        .into_iter()
+        .filter_map(|o| o)
+        .collect::<Vec<_>>();
+
+    match parts.len() {
+        1 => format!("{}", parts[0]),
+        _ => format!(
+            "{} and {}",
+            parts[0..parts.len() - 1].join(", "),
+            parts[parts.len() - 1]
+        ),
+    }
+}
+
+#[cfg(test)]
+mod test_format_duration {
+    use super::*;
+
+    #[test]
+    fn test_basic() {
+        assert_eq!(format_duration(0), "now");
+        assert_eq!(format_duration(1), "1 second");
+        assert_eq!(format_duration(62), "1 minute and 2 seconds");
+        assert_eq!(format_duration(120), "2 minutes");
+        assert_eq!(format_duration(3600), "1 hour");
+        assert_eq!(format_duration(3662), "1 hour, 1 minute and 2 seconds");
+        assert_eq!(
+            format_duration(15731080),
+            "182 days, 1 hour, 44 minutes and 40 seconds"
+        );
+    }
+}
