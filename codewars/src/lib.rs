@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused)]
 
-use std::{cmp::Ordering, collections::HashMap};
+use std::{cmp::Ordering, collections::HashMap, vec};
 
 fn dna_strand(dna: &str) -> String {
     dna.chars()
@@ -689,5 +689,132 @@ mod test_format_duration {
             format_duration(15731080),
             "182 days, 1 hour, 44 minutes and 40 seconds"
         );
+    }
+}
+
+fn rot13(message: &str) -> String {
+    message
+        .chars()
+        .map(|c| match c {
+            'a'..='z' => ((c as u8 - b'a' + 13) % 26 + b'a') as char,
+            'A'..='Z' => ((c as u8 - b'A' + 13) % 26 + b'A') as char,
+            _ => c,
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod test_rot13 {
+    use super::*;
+
+    #[test]
+    fn test_fixed() {
+        assert_eq!(rot13("test"), "grfg");
+        assert_eq!(rot13("Test"), "Grfg");
+    }
+}
+
+fn mix(s1: &str, s2: &str) -> String {
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+    enum Source {
+        Left,
+        Right,
+        Both,
+    }
+
+    fn frequencies(s: &str, source: Source) -> Vec<(char, usize, Source)> {
+        use std::collections::HashMap;
+        s.chars()
+            .filter(|c| c.is_lowercase())
+            .fold(HashMap::new(), |mut map, c| {
+                let count = map.entry(c).or_insert(0);
+                *count += 1;
+                map
+            })
+            .into_iter()
+            .filter_map(|(c, count)| (count > 1).then(|| (c, count, source)))
+            .collect::<Vec<_>>()
+    }
+
+    let mut freqs = frequencies(&s1, Source::Left);
+    freqs.extend(frequencies(&s2, Source::Right));
+
+    // 1: sort by char ascending and count descending
+    freqs.sort_by(|(char1, count1, _), (char2, count2, _)| {
+        char::cmp(char1, char2).then(usize::cmp(count1, count2).reverse())
+    });
+
+    // 2: deduplicate tuples with same char
+    // - same count => pick first, update to Source::Both for sorting in next step
+    // - diff count => pick first
+    let mut freqs = freqs.into_iter().fold(Vec::new(), |mut stack, freq| {
+        if stack.is_empty() {
+            stack.push(freq);
+        } else {
+            match (stack.pop().unwrap(), freq) {
+                ((char1, count1, _), (char2, count2, _)) if char1 == char2 && count1 == count2 => {
+                    stack.push((char1, count1, Source::Both))
+                }
+                (f1 @ (char1, _, _), (char2, _, _)) if char1 == char2 => stack.push(f1),
+                (f1, f2) => {
+                    stack.push(f1);
+                    stack.push(f2);
+                }
+            }
+        }
+        stack
+    });
+
+    // 3: sort by count descending, source ascending (to get equal counts in the same group) and char ascending
+    freqs.sort_by(|(char1, count1, source1), (char2, count2, source2)| {
+        usize::cmp(count1, count2)
+            .reverse()
+            .then(Source::cmp(source1, source2).then(char::cmp(char1, char2)))
+    });
+
+    // 4: convert to string
+    freqs
+        .into_iter()
+        .map(|(c, count, source)| match source {
+            Source::Both => format!("=:{}", c.to_string().repeat(count)),
+            Source::Left => format!("1:{}", c.to_string().repeat(count)),
+            Source::Right => format!("2:{}", c.to_string().repeat(count)),
+        })
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+#[cfg(test)]
+mod test_mix {
+    use super::mix;
+
+    #[test]
+    fn basics_mix() {
+        testing(
+            "Are they here",
+            "yes, they are here",
+            "2:eeeee/2:yy/=:hh/=:rr",
+        );
+        testing(
+            "looping is fun but dangerous",
+            "less dangerous than coding",
+            "1:ooo/1:uuu/2:sss/=:nnn/1:ii/2:aa/2:dd/2:ee/=:gg",
+        );
+        testing(
+            " In many languages",
+            " there's a pair of functions",
+            "1:aaa/1:nnn/1:gg/2:ee/2:ff/2:ii/2:oo/2:rr/2:ss/2:tt",
+        );
+        testing("Lords of the Fallen", "gamekult", "1:ee/1:ll/1:oo");
+        testing("codewars", "codewars", "");
+        testing(
+            "A generation must confront the looming ",
+            "codewarrs",
+            "1:nnnnn/1:ooooo/1:tttt/1:eee/1:gg/1:ii/1:mm/=:rr",
+        );
+    }
+
+    fn testing(s1: &str, s2: &str, exp: &str) -> () {
+        assert_eq!(&mix(s1, s2), exp)
     }
 }
