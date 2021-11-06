@@ -1,7 +1,11 @@
 #![allow(dead_code)]
 #![allow(unused)]
 
-use std::{cmp::Ordering, collections::HashMap, vec};
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+    vec,
+};
 
 fn dna_strand(dna: &str) -> String {
     dna.chars()
@@ -819,7 +823,7 @@ mod test_mix {
     }
 }
 
-fn recover_secret(triplets: Vec<[char; 3]>) -> String {
+fn recover_secret_yolo(triplets: Vec<[char; 3]>) -> String {
     fn find(a: &[char], n: char) -> Option<usize> {
         for (i, c) in a.iter().enumerate() {
             if *c == n {
@@ -904,6 +908,52 @@ fn recover_secret(triplets: Vec<[char; 3]>) -> String {
         if converged {
             break;
         }
+    }
+
+    res.into_iter().collect()
+}
+
+// represents the input as a directed graph and applies
+// topological sort to return the chars in order
+fn recover_secret(triplets: Vec<[char; 3]>) -> String {
+    use std::collections::{HashMap, HashSet};
+
+    type Graph = HashMap<char, HashSet<char>>;
+    type InDegrees = HashMap<char, u32>;
+
+    let (mut g, mut i) = triplets.iter().fold(
+        (Graph::new(), InDegrees::new()),
+        |(mut g, mut i), [a, b, c]| {
+            i.entry(*a).or_insert(0);
+            g.entry(*c).or_insert(HashSet::new());
+
+            if g.entry(*a).or_insert(HashSet::new()).insert(*b) {
+                *i.entry(*b).or_insert(0) += 1;
+            }
+            if g.entry(*b).or_insert(HashSet::new()).insert(*c) {
+                *i.entry(*c).or_insert(0) += 1;
+            }
+
+            (g, i)
+        },
+    );
+
+    let mut res = Vec::with_capacity(g.len());
+
+    while !g.is_empty() {
+        // get next node with in-degree = 0
+        let next = i.iter().find(|(_, &v)| v == 0).unwrap().0.clone();
+
+        // remove node from graph and decrement in-degree of neighbors
+        g.remove(&next)
+            .unwrap()
+            .iter()
+            .for_each(|out| *i.entry(*out).or_default() -= 1);
+
+        // remove node from in-degrees
+        i.remove(&next);
+
+        res.push(next);
     }
 
     res.into_iter().collect()
