@@ -974,3 +974,25 @@ fn recover_secret_test() {
         "whatisup"
     );
 }
+
+fn product_fib(prod: u64) -> (u64, u64, bool) {
+    let mut fib_n = 0;
+    let mut fib_m = 1;
+
+    while fib_n * fib_m < prod {
+        fib_m = fib_n + fib_m;
+        fib_n = fib_m - fib_n;
+    }
+
+    (fib_n, fib_m, fib_n * fib_m == prod)
+}
+
+fn dotest(prod: u64, exp: (u64, u64, bool)) -> () {
+    assert_eq!(product_fib(prod), exp)
+}
+
+#[test]
+fn basics_product_fib() {
+    dotest(4895, (55, 89, true));
+    dotest(5895, (89, 144, false));
+}
