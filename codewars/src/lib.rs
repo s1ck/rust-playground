@@ -145,7 +145,7 @@ fn sort_array(arr: &[i32]) -> Vec<i32> {
 }
 
 #[test]
-fn tset_sort_array() {
+fn test_sort_array() {
     assert_eq!(sort_array(&[5, 3, 2, 8, 1, 4]), [1, 3, 2, 8, 5, 4]);
     assert_eq!(sort_array(&[5, 3, 1, 8, 0]), [1, 3, 5, 8, 0]);
     assert_eq!(sort_array(&[]), []);
@@ -925,12 +925,12 @@ fn recover_secret(triplets: Vec<[char; 3]>) -> String {
         (Graph::new(), InDegrees::new()),
         |(mut g, mut i), [a, b, c]| {
             i.entry(*a).or_insert(0);
-            g.entry(*c).or_insert(HashSet::new());
+            g.entry(*c).or_default();
 
-            if g.entry(*a).or_insert(HashSet::new()).insert(*b) {
+            if g.entry(*a).or_default().insert(*b) {
                 *i.entry(*b).or_insert(0) += 1;
             }
-            if g.entry(*b).or_insert(HashSet::new()).insert(*c) {
+            if g.entry(*b).or_default().insert(*c) {
                 *i.entry(*c).or_insert(0) += 1;
             }
 
@@ -995,4 +995,174 @@ fn dotest(prod: u64, exp: (u64, u64, bool)) -> () {
 fn basics_product_fib() {
     dotest(4895, (55, 89, true));
     dotest(5895, (89, 144, false));
+}
+
+fn smallest_number_based(n: i64) -> (i64, usize, usize) {
+    fn digits(mut n: i64) -> Vec<u8> {
+        let mut res = vec![];
+        while n > 0 {
+            res.push((n % 10) as u8);
+            n = n / 10;
+        }
+        res.reverse();
+        res
+    }
+
+    fn number_from_digits(digits: &[u8]) -> i64 {
+        let mut base = 1;
+        let mut n = 0_i64;
+        for d in digits.iter().rev() {
+            n += *d as i64 * base;
+            base *= 10;
+        }
+        n
+    }
+
+    let mut smallest = n;
+    let mut from_index = 0;
+    let mut to_index = 0;
+
+    let mut digits = digits(n);
+
+    let len = digits.len();
+
+    for from in 0..digits.len() {
+        for to in 0..digits.len() {
+            let d = digits.remove(from);
+            digits.insert(to, d);
+
+            let num = number_from_digits(&digits);
+            if num < smallest {
+                smallest = num;
+                from_index = from;
+                to_index = to;
+            }
+
+            let d = digits.remove(to);
+            digits.insert(from, d);
+        }
+    }
+
+    (smallest, from_index, to_index)
+}
+
+fn smallest(n: i64) -> (i64, usize, usize) {
+    let mut smallest = n;
+    let mut from = 0;
+    let mut to = 0;
+
+    let n_string = n.to_string();
+
+    for i in 0..n_string.len() {
+        for j in 0..n_string.len() {
+            let mut copy = n_string.clone();
+            let d = copy.remove(i);
+            copy.insert(j, d);
+            let num = copy.parse::<i64>().unwrap();
+            if num < smallest {
+                smallest = num;
+                from = i;
+                to = j;
+            }
+        }
+    }
+
+    (smallest, from, to)
+}
+
+#[cfg(test)]
+mod test_smallest {
+    use super::*;
+
+    fn testing(n: i64, exp: (i64, usize, usize)) -> () {
+        let ans = smallest(n);
+        assert_eq!(ans, exp, "Testing: {}", n);
+    }
+
+    #[test]
+    fn basic_tests() {
+        testing(261235, (126235, 2, 0));
+        testing(209917, (29917, 0, 1));
+        testing(285365, (238565, 3, 1));
+    }
+}
+
+// see https://en.wikipedia.org/wiki/Digital_root
+fn digital_root_direct(n: i64) -> i64 {
+    ((n - 1) % 9) + 1
+}
+
+fn digital_root_recursive(n: i64) -> i64 {
+    if n / 10 == 0 {
+        n
+    } else {
+        digital_root_recursive(n / 10 + n % 10)
+    }
+}
+
+fn digital_root(mut n: i64) -> i64 {
+    while n >= 10 {
+        n = n / 10 + n % 10;
+    }
+    n
+}
+
+#[cfg(test)]
+mod test_digital_root {
+    use super::*;
+
+    #[test]
+    fn returns_expected() {
+        assert_eq!(digital_root(16), 7);
+        assert_eq!(digital_root(7), 7);
+        assert_eq!(digital_root(493193), 2);
+    }
+}
+
+fn decompose(mut n: i64) -> Option<Vec<i64>> {
+    let mut stack = vec![];
+    let mut n_square = n.pow(2);
+
+    fn dec(curr: i64, mut sum_square: i64, stack: &mut Vec<i64>) -> bool {
+        stack.push(curr);
+        let square = curr.pow(2);
+
+        if sum_square - square == 0 {
+            // done
+            return true;
+        }
+
+        let next = f64::sqrt((sum_square - square) as f64).trunc() as i64;
+
+        if next >= curr {
+            stack.pop();
+            return false;
+        }
+
+        if !dec(next, sum_square - square, stack) {
+            stack.pop();
+            return dec(curr - 1, sum_square, stack);
+        }
+
+        return true;
+    }
+
+    if dec(n - 1, n * n, &mut stack) {
+        stack.reverse();
+        return Some(stack);
+    }
+
+    None
+}
+
+fn testing(n: i64, exp: Option<Vec<i64>>) -> () {
+    assert_eq!(decompose(n), exp)
+}
+
+#[test]
+fn test_decompose() {
+    testing(50, Some(vec![1, 3, 5, 8, 49]));
+    testing(44, Some(vec![2, 3, 5, 7, 43]));
+    testing(625, Some(vec![2, 5, 8, 34, 624]));
+    testing(5, Some(vec![3, 4]));
 }
