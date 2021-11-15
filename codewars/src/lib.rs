@@ -1119,10 +1119,7 @@ mod test_digital_root {
     }
 }
 
-fn decompose(mut n: i64) -> Option<Vec<i64>> {
-    let mut stack = vec![];
-    let mut n_square = n.pow(2);
-
+fn decompose(n: i64) -> Option<Vec<i64>> {
     fn dec(curr: i64, mut sum_square: i64, stack: &mut Vec<i64>) -> bool {
         stack.push(curr);
         let square = curr.pow(2);
@@ -1132,7 +1129,7 @@ fn decompose(mut n: i64) -> Option<Vec<i64>> {
             return true;
         }
 
-        let next = f64::sqrt((sum_square - square) as f64).trunc() as i64;
+        let next = f64::sqrt((sum_square - square) as f64) as i64;
 
         if next >= curr {
             stack.pop();
@@ -1146,6 +1143,8 @@ fn decompose(mut n: i64) -> Option<Vec<i64>> {
 
         return true;
     }
+
+    let mut stack = vec![];
 
     if dec(n - 1, n * n, &mut stack) {
         stack.reverse();
@@ -1165,4 +1164,131 @@ fn test_decompose() {
     testing(44, Some(vec![2, 3, 5, 7, 43]));
     testing(625, Some(vec![2, 5, 8, 34, 624]));
     testing(5, Some(vec![3, 4]));
+}
+
+fn find_next_square(sq: u64) -> Option<u64> {
+    let sqrt = (sq as f64).sqrt();
+    (sqrt.fract() == 0.0).then(|| (sqrt + 1.0).powf(2.0) as u64)
+}
+
+#[cfg(test)]
+mod test_find_next_square {
+    use super::find_next_square;
+
+    #[test]
+    fn sample_tests() {
+        assert_eq!(find_next_square(121), Some(144));
+        assert_eq!(find_next_square(625), Some(676));
+        assert_eq!(find_next_square(319_225), Some(320_356));
+        assert_eq!(find_next_square(15_241_383_936), Some(15_241_630_849));
+        assert_eq!(find_next_square(155), None);
+        assert_eq!(find_next_square(342_786_627), None);
+    }
+}
+
+fn ends_with(word: &str, ending: &str) -> bool {
+    word.ends_with(ending)
+}
+
+#[test]
+fn test_ends_with() {
+    assert_eq!(true, ends_with("abc", "c"));
+    assert_eq!(false, ends_with("strawberry", "banana"));
+}
+
+fn longest_consec(strarr: Vec<&str>, k: usize) -> String {
+    if strarr.is_empty() || k == 0 {
+        "".to_string()
+    } else {
+        strarr
+            .windows(k)
+            .map(|w| w.join(""))
+            .rev()
+            .max_by_key(|w| w.len())
+            .unwrap_or_default()
+    }
+}
+
+fn testing_longest_consec(strarr: Vec<&str>, k: usize, exp: &str) -> () {
+    assert_eq!(&longest_consec(strarr, k), exp)
+}
+
+#[test]
+fn test_longest_consec() {
+    testing_longest_consec(
+        vec!["zone", "abigail", "theta", "form", "libe", "zas"],
+        2,
+        "abigailtheta",
+    );
+    testing_longest_consec(
+        vec![
+            "ejjjjmmtthh",
+            "zxxuueeg",
+            "aanlljrrrxx",
+            "dqqqaaabbb",
+            "oocccffuucccjjjkkkjyyyeehh",
+        ],
+        1,
+        "oocccffuucccjjjkkkjyyyeehh",
+    );
+    testing_longest_consec(vec![], 3, "");
+    testing_longest_consec(
+        vec!["it", "wkppv", "ixoyx", "3452", "zzzzzzzzzzzz"],
+        3,
+        "ixoyx3452zzzzzzzzzzzz",
+    );
+    testing_longest_consec(vec!["it", "wkppv", "ixoyx", "3452", "zzzzzzzzzzzz"], 15, "");
+    testing_longest_consec(vec!["it", "wkppv", "ixoyx", "3452", "zzzzzzzzzzzz"], 0, "");
+}
+
+fn sum_of_divided(l: Vec<i64>) -> Vec<(i64, i64)> {
+    fn is_prime(n: i64) -> bool {
+        let upper_bound = (n as f64).sqrt().floor() as i64 + 1;
+        (2..upper_bound).all(|i| n % i != 0)
+    }
+    let max = l.iter().map(|n| n.abs()).max().unwrap_or_default();
+    let primes = (2..=max).filter(|i| is_prime(*i));
+
+    let mut res = vec![];
+
+    for p in primes {
+        l.iter()
+            .filter(|e| *e % p == 0)
+            .fold(None, |sum, e| match sum {
+                None => Some(*e),
+                Some(s) => Some(s + *e),
+            })
+            .map(|s| res.push((p, s)));
+    }
+
+    res
+}
+
+fn testing_sum_of_divided(l: Vec<i64>, exp: Vec<(i64, i64)>) -> () {
+    assert_eq!(sum_of_divided(l), exp)
+}
+
+#[test]
+fn test_sum_of_divided() {
+    testing_sum_of_divided(vec![12, 15], vec![(2, 12), (3, 27), (5, 15)]);
+    testing_sum_of_divided(
+        vec![15, 21, 24, 30, 45],
+        vec![(2, 54), (3, 135), (5, 90), (7, 21)],
+    );
+    testing_sum_of_divided(
+        vec![107, 158, 204, 100, 118, 123, 126, 110, 116, 100],
+        vec![
+            (2, 1032),
+            (3, 453),
+            (5, 310),
+            (7, 126),
+            (11, 110),
+            (17, 204),
+            (29, 116),
+            (41, 123),
+            (59, 118),
+            (79, 158),
+            (107, 107),
+        ],
+    );
 }
