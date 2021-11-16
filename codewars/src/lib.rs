@@ -1369,3 +1369,69 @@ mod test_next_bigger_number {
         assert_eq!(-1, next_bigger_number(111));
     }
 }
+
+fn get_lines(n: usize) -> String {
+    fn get_line(n: &str) -> String {
+        let mut line = String::new();
+
+        let n = n.chars().collect::<Vec<_>>();
+
+        let mut curr = n[0];
+        let mut count = 1;
+
+        for &next in &n[1..] {
+            if next != curr {
+                line.push_str(format!("{}{}", count, curr).as_str());
+                curr = next;
+                count = 0;
+            }
+            count += 1;
+        }
+
+        line.push_str(format!("{}{}", count, curr).as_str());
+
+        line
+    }
+
+    if n == 0 {
+        return String::new();
+    }
+
+    (1..n)
+        .fold(vec![String::from("1")], |mut res, i| {
+            res.push(get_line(res[i - 1].as_str()));
+            res
+        })
+        .join(",")
+}
+
+fn get_lines_itertools(n: usize) -> String {
+    use itertools::{iterate, Itertools};
+
+    iterate("1".to_owned(), |s| {
+        s.chars()
+            .dedup_with_count()
+            .format_with("", |(k, x), f| f(&format_args!("{}{}", k, x)))
+            .to_string()
+    })
+    .take(n)
+    .join(",")
+}
+
+#[cfg(test)]
+mod test_get_lines {
+    use super::*;
+
+    #[test]
+    fn basic() {
+        assert_eq!(get_lines(2), "1,11");
+        assert_eq!(get_lines(3), "1,11,21");
+        assert_eq!(get_lines(5), "1,11,21,1211,111221");
+    }
+    #[test]
+    fn basic_itertools() {
+        assert_eq!(get_lines_itertools(2), "1,11");
+        assert_eq!(get_lines_itertools(3), "1,11,21");
+        assert_eq!(get_lines_itertools(5), "1,11,21,1211,111221");
+    }
+}
