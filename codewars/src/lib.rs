@@ -1292,3 +1292,80 @@ fn test_sum_of_divided() {
         ],
     );
 }
+
+fn next_bigger_number(n: i64) -> i64 {
+    let mut digits = n
+        .to_string()
+        .chars()
+        .flat_map(|c| c.to_digit(10))
+        .collect::<Vec<_>>();
+
+    // start at the end and find first index 'left' where d[left] < d[left + 1]
+    let mut left = 0;
+    let mut found = false;
+    for i in (1..digits.len()).rev() {
+        if digits[i - 1] < digits[i] {
+            left = i - 1;
+            found = true;
+            break;
+        }
+    }
+
+    // all digits are either equal or sorted descending
+    if !found {
+        return -1;
+    }
+
+    // starting from 'left', find index 'right' to the right where d[right]
+    // is greater than d[left] and d[right] is the smallest possible value
+    let mut right = 0;
+    for i in (left + 1..digits.len()).rev() {
+        if digits[i] > digits[left] {
+            right = i;
+            break;
+        }
+    }
+
+    digits.swap(left, right);
+    digits[left + 1..].sort();
+
+    digits
+        .into_iter()
+        .map(|i| format!("{}", i))
+        .collect::<String>()
+        .parse::<i64>()
+        .unwrap()
+}
+
+fn next_bigger_number_nicer(n: i64) -> i64 {
+    let mut d = n.to_string().chars().rev().collect::<Vec<_>>();
+
+    let left = match (0..d.len() - 1).position(|i| d[i + 1] < d[i]) {
+        Some(i) => i + 1,
+        None => return -1,
+    };
+
+    let right = (0..left).position(|i| d[i] > d[left]).unwrap();
+
+    d.swap(left, right);
+
+    d[0..left].sort_by_key(|&i| std::cmp::Reverse(i));
+
+    d.into_iter().rev().collect::<String>().parse().unwrap()
+}
+
+#[cfg(test)]
+mod test_next_bigger_number {
+    use super::*;
+
+    #[test]
+    fn basic() {
+        assert_eq!(21, next_bigger_number(12));
+        assert_eq!(531, next_bigger_number(513));
+        assert_eq!(2071, next_bigger_number(2017));
+        assert_eq!(441, next_bigger_number(414));
+        assert_eq!(414, next_bigger_number(144));
+        assert_eq!(59884848483559, next_bigger_number(59884848459853));
+        assert_eq!(-1, next_bigger_number(111));
+    }
+}
