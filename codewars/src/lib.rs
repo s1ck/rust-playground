@@ -1116,6 +1116,7 @@ mod test_digital_root {
         assert_eq!(digital_root(16), 7);
         assert_eq!(digital_root(7), 7);
         assert_eq!(digital_root(493193), 2);
+        assert_eq!(digital_root(13223189), 2);
     }
 }
 
@@ -1433,5 +1434,272 @@ mod test_get_lines {
         assert_eq!(get_lines_itertools(2), "1,11");
         assert_eq!(get_lines_itertools(3), "1,11,21");
         assert_eq!(get_lines_itertools(5), "1,11,21,1211,111221");
+    }
+}
+
+fn int32_to_ip(int: u32) -> String {
+    let oct1 = (int & 0xFF000000) >> 24;
+    let oct2 = (int & 0x00FF0000) >> 16;
+    let oct3 = (int & 0x0000FF00) >> 8;
+    let oct4 = (int & 0x000000FF);
+
+    format!("{}.{}.{}.{}", oct1, oct2, oct3, oct4)
+}
+
+#[cfg(test)]
+mod test_int32_to_ip {
+    use super::*;
+
+    #[test]
+    fn basic() {
+        assert_eq!(int32_to_ip(2154959208), "128.114.17.104");
+        assert_eq!(int32_to_ip(2149583361), "128.32.10.1");
+        assert_eq!(int32_to_ip(0), "0.0.0.0");
+    }
+}
+
+mod ll_1_parser {
+    use std::{
+        iter::Peekable,
+        str::{CharIndices, Chars},
+    };
+
+    type CookieMonster<'a> = Peekable<Chars<'a>>;
+
+    trait Nom<T> {
+        fn nom_nom(&mut self) -> T;
+
+        fn nom_nom_ws(&mut self);
+    }
+
+    impl<'a> Nom<char> for CookieMonster<'a> {
+        fn nom_nom(&mut self) -> char {
+            self.next().unwrap()
+        }
+
+        fn nom_nom_ws(&mut self) {
+            while let Some(c) = self.peek() {
+                if *c == ' ' {
+                    self.nom_nom();
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    // Grammar
+    // -------
+    //
+    // expr    := sum
+    // sum     := product  | product "+" product | product "-" product;
+    // product := term     | term    "*" term    | term    "/" term;
+    // term    := "-" term | "(" sum ")"         | number;
+    // number  := fp_numer;
+
+    fn calc(expr: &str) -> f64 {
+        let mut cm: CookieMonster = expr.chars().peekable();
+        sum(&mut cm)
+    }
+
+    fn sum(cm: &mut CookieMonster) -> f64 {
+        let mut left = product(cm);
+
+        while let Some(c) = cm.peek() {
+            match c {
+                '+' => {
+                    cm.nom_nom();
+                    left += product(cm);
+                }
+                '-' => {
+                    cm.nom_nom();
+                    left -= product(cm);
+                }
+                ' ' => {
+                    cm.nom_nom();
+                }
+                _ => break,
+            }
+        }
+
+        left
+    }
+
+    fn product(cm: &mut CookieMonster) -> f64 {
+        let mut left = term(cm);
+
+        while let Some(c) = cm.peek() {
+            match c {
+                '*' => {
+                    cm.nom_nom();
+                    left *= term(cm);
+                }
+                '/' => {
+                    cm.nom_nom();
+                    left /= term(cm);
+                }
+                ' ' => {
+                    cm.nom_nom();
+                }
+                _ => break,
+            }
+        }
+
+        left
+    }
+
+    fn term(cm: &mut CookieMonster) -> f64 {
+        cm.nom_nom_ws();
+        match cm.peek() {
+            Some('-') => {
+                cm.nom_nom();
+                -1.0 * term(cm)
+            }
+            Some('(') => {
+                cm.nom_nom();
+                let inner = sum(cm);
+                cm.nom_nom_ws();
+                let closing = cm.nom_nom();
+                debug_assert_eq!(closing, ')');
+                inner
+            }
+            _ => number(cm),
+        }
+    }
+
+    fn number(chars: &mut CookieMonster) -> f64 {
+        let mut number = vec![];
+
+        while let Some(c) = chars.peek() {
+            match c {
+                '0'..='9' | '.' => number.push(chars.next().unwrap()),
+                _ => break,
+            }
+        }
+
+        number.iter().collect::<String>().parse().unwrap()
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::calc;
+
+        // Wrap custom message to reduce repitition
+        macro_rules! assert_expr_eq {
+            ($expr: expr, $expect: expr) => {
+                assert_eq!(
+                    calc($expr),
+                    $expect,
+                    "\nexpected expression \"{}\" to equal \"{:?}\", but got \"{:?}\"",
+                    $expr,
+                    $expect,
+                    calc($expr),
+                );
+            };
+        }
+
+        #[test]
+        fn single_values() {
+            assert_expr_eq!("0", 0.0);
+            assert_expr_eq!("1", 1.0);
+            assert_expr_eq!("42", 42.0);
+            assert_expr_eq!("-0", 0.0);
+            assert_expr_eq!("-1", -1.0);
+            assert_expr_eq!("-42", -42.0);
+
+            assert_expr_eq!("(0)", 0.0);
+            assert_expr_eq!("((42))", 42.0);
+            assert_expr_eq!("-(42)", -42.0);
+            assert_expr_eq!("-(-(42))", 42.0);
+
+            assert_expr_eq!(" (0)", 0.0);
+            assert_expr_eq!("( ( 42) ) ", 42.0);
+            assert_expr_eq!(" - ( 42  )", -42.0);
+            assert_expr_eq!("- (  - (   42   ))", 42.0);
+        }
+
+        #[test]
+        fn mul_div() {
+            assert_expr_eq!("1 * 1", 1.0);
+            assert_expr_eq!("1 / 1", 1.0);
+            assert_expr_eq!("42 / 2", 21.0);
+
+            assert_expr_eq!("1*1", 1.0);
+            assert_expr_eq!("1/   1", 1.0);
+            assert_expr_eq!("42 / 2", 21.0);
+
+            assert_expr_eq!("1.5 * 2.0", 3.0);
+            assert_expr_eq!("3.0 / 1.5", 2.0);
+            assert_expr_eq!("42.42 / 2", 21.21);
+
+            assert_expr_eq!("(1.5 * 2.0) / 1.5", 2.0);
+            assert_expr_eq!("(3.0 / 1.5) * (2.5 * 2.0)", 10.0);
+            assert_expr_eq!("(42.42) / (2)", 21.21);
+
+            assert_expr_eq!("2.0 * 2.0 * 2.0", 8.0);
+        }
+
+        #[test]
+        fn add_sub() {
+            assert_expr_eq!("1 + 1", 2.0);
+            assert_expr_eq!("1 - 1", 0.0);
+            assert_expr_eq!("42 - 2", 40.0);
+
+            assert_expr_eq!("1+1", 2.0);
+            assert_expr_eq!("1-   1", 0.0);
+            assert_expr_eq!("42 -2", 40.0);
+
+            assert_expr_eq!("1.5 + 2.0", 3.5);
+            assert_expr_eq!("3.0 - 1.5", 1.5);
+            assert_expr_eq!("42.42 + 2", 44.42);
+
+            assert_expr_eq!("(1.5 + 2.0) - 1.5", 2.0);
+            assert_expr_eq!("(3.0 + 1.5) - (2.5 + 2.0)", 0.0);
+            assert_expr_eq!("(42.42) - (2)", 40.42);
+
+            assert_expr_eq!("2.0 + 2.0 - 2.0 + 2.0", 4.0);
+        }
+
+        #[test]
+        fn basic_operations() {
+            assert_expr_eq!("1 + 1", 2.0);
+            assert_expr_eq!("1 - 1", 0.0);
+            assert_expr_eq!("1 * 1", 1.0);
+            assert_expr_eq!("1 / 1", 1.0);
+            assert_expr_eq!("12 * 123", 1476.0);
+        }
+
+        #[test]
+        fn whitespace_between_operators_and_operands() {
+            assert_expr_eq!("1-1", 0.0);
+            assert_expr_eq!("1 -1", 0.0);
+            assert_expr_eq!("1- 1", 0.0);
+            assert_expr_eq!("1* 1", 1.0);
+        }
+
+        #[test]
+        fn unary_minuses() {
+            assert_expr_eq!("1- -1", 2.0);
+            assert_expr_eq!("1--1", 2.0);
+            assert_expr_eq!("1 - -1", 2.0);
+            assert_expr_eq!("-42", -42.0);
+        }
+
+        #[test]
+        fn parentheses() {
+            assert_expr_eq!("(1)", 1.0);
+            assert_expr_eq!("((1))", 1.0);
+            assert_expr_eq!("((80 - (19)))", 61.0);
+        }
+
+        #[test]
+        fn multiple_operators() {
+            assert_expr_eq!("12* 123/(-5 + 2)", -492.0);
+            assert_expr_eq!("1 - -(-(-(-4)))", -3.0);
+            assert_expr_eq!("2 /2+3 * 4.75- -6", 21.25);
+            assert_expr_eq!("2 / (2 + 3) * 4.33 - -6", 7.732);
+            assert_expr_eq!("(1 - 2) + -(-(-(-4)))", 3.0);
+            assert_expr_eq!("((2.33 / (2.9+3.5)*4) - -6)", 7.45625);
+        }
     }
 }
