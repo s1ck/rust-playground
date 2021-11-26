@@ -1703,3 +1703,115 @@ mod ll_1_parser {
         }
     }
 }
+
+fn count_bits(n: i64) -> u32 {
+    n.count_ones()
+    // code here
+}
+
+// Rust test example:
+// TODO: replace with your own tests (TDD), these are just how-to examples.
+// See: https://doc.rust-lang.org/book/testing.html
+
+#[test]
+fn test_count_bits() {
+    assert_eq!(count_bits(0), 0);
+    assert_eq!(count_bits(4), 1);
+    assert_eq!(count_bits(7), 3);
+    assert_eq!(count_bits(9), 2);
+    assert_eq!(count_bits(10), 2);
+}
+
+mod quest {
+    pub fn solomons_quest(r: Vec<(i32, i32, i32)>) -> (i32, i32) {
+        r.iter()
+            .fold(
+                ((0, 0), 0_i32),
+                |((mut x, mut y), mut dilation), (dilation_shift, direction, distance)| {
+                    dilation += dilation_shift;
+                    match direction {
+                        0 => y += (distance << dilation),
+                        1 => x += (distance << dilation),
+                        2 => y -= (distance << dilation),
+                        3 => x -= (distance << dilation),
+                        _ => unreachable!(),
+                    };
+                    ((x, y), dilation)
+                },
+            )
+            .0
+    }
+
+    fn run_test(r: Vec<(i32, i32, i32)>, sol: (i32, i32)) {
+        assert_eq!(solomons_quest(r), sol)
+    }
+
+    #[test]
+    fn run_examples() {
+        run_test(
+            vec![
+                (1, 3, 5),
+                (2, 0, 10),
+                (-3, 1, 4),
+                (4, 2, 4),
+                (1, 1, 5),
+                (-3, 0, 12),
+                (2, 1, 12),
+                (-2, 2, 6),
+            ],
+            (346, 40),
+        );
+        run_test(
+            vec![
+                (4, 0, 8),
+                (2, 1, 2),
+                (1, 0, 5),
+                (-3, 3, 16),
+                (2, 2, 2),
+                (-1, 1, 7),
+                (0, 0, 5),
+                (-4, 3, 14),
+            ],
+            (68, 800),
+        );
+        run_test(
+            vec![
+                (1, 1, 20),
+                (1, 2, 30),
+                (1, 3, 8),
+                (1, 0, 2),
+                (1, 1, 6),
+                (1, 2, 4),
+                (1, 3, 6),
+                (-7, 0, 100),
+            ],
+            (-600, -244),
+        );
+        run_test(
+            vec![
+                (2, 2, 100),
+                (3, 1, 25),
+                (4, 0, 8),
+                (-6, 3, 25),
+                (-1, 2, 80),
+                (8, 0, 12),
+                (-10, 3, 220),
+                (0, 1, 150),
+            ],
+            (530, 15664),
+        );
+        run_test(
+            vec![
+                (3, 2, 80),
+                (1, 1, 25),
+                (6, 0, 8),
+                (-5, 3, 50),
+                (1, 2, 100),
+                (4, 0, 9),
+                (-8, 3, 260),
+                (0, 1, 90),
+            ],
+            (-1880, 10368),
+        );
+    }
+}
