@@ -1815,3 +1815,156 @@ mod quest {
         );
     }
 }
+
+mod isc {
+    pub fn encode(s: &str) -> String {
+        let length = (s.len() as f32).sqrt().ceil() as usize;
+        let values = s.chars().collect::<Vec<_>>();
+
+        let mut encoded = vec![vec![' '; length]; length];
+
+        let mut start_idx = 0;
+        let mut value_idx = 0;
+
+        while value_idx < s.len() {
+            value_idx = encode_into_square(&mut encoded, start_idx, &values, value_idx);
+            start_idx += 1;
+        }
+
+        return encoded
+            .iter()
+            .map(|row| row.iter().collect::<String>())
+            .collect::<String>();
+
+        fn encode_into_square(
+            square: &mut [Vec<char>],
+            start_idx: usize,
+            values: &[char],
+            value_idx: usize,
+        ) -> usize {
+            let end_idx = square.len() - start_idx - 1;
+
+            // only one char left
+            if start_idx == end_idx {
+                square[start_idx][end_idx] = *values.get(value_idx).unwrap_or(&' ');
+                return value_idx + 1;
+            }
+
+            let mut idx0 = value_idx;
+            let mut idx1 = value_idx + 1;
+            let mut idx2 = value_idx + 2;
+            let mut idx3 = value_idx + 3;
+
+            for i in start_idx..end_idx {
+                let val0 = *values.get(idx0).unwrap_or(&' ');
+                let val1 = *values.get(idx1).unwrap_or(&' ');
+                let val2 = *values.get(idx2).unwrap_or(&' ');
+                let val3 = *values.get(idx3).unwrap_or(&' ');
+
+                square[start_idx][i] = val0;
+                square[i][end_idx] = val1;
+                square[end_idx][start_idx + end_idx - i] = val2;
+                square[start_idx + end_idx - i][start_idx] = val3;
+
+                idx0 += 4;
+                idx1 += 4;
+                idx2 += 4;
+                idx3 += 4;
+            }
+
+            idx3 - 3
+        }
+    }
+
+    pub fn decode(s: &str) -> String {
+        let length = (s.len() as f32).sqrt().ceil() as usize;
+        let values = s.chars().collect::<Vec<_>>();
+
+        let s = s.chars().collect::<Vec<_>>();
+
+        let mut encoded = vec![];
+        for i in 0..length {
+            encoded.push(&s[i * length..(i + 1) * length]);
+        }
+
+        let mut decoded = vec![' '; s.len()];
+
+        let mut start_idx = 0;
+        let mut value_idx = 0;
+
+        while value_idx < s.len() {
+            value_idx = decode_from_square(&mut encoded, start_idx, &mut decoded, value_idx);
+            start_idx += 1;
+        }
+
+        return decoded.iter().collect::<String>().trim_end().to_string();
+
+        fn decode_from_square(
+            encoded: &[&[char]],
+            start_idx: usize,
+            decoded: &mut [char],
+            value_idx: usize,
+        ) -> usize {
+            let end_idx = encoded.len() - start_idx - 1;
+
+            if start_idx == end_idx {
+                decoded[value_idx] = encoded[start_idx][end_idx];
+                return value_idx + 1;
+            }
+
+            let mut idx0 = value_idx;
+            let mut idx1 = value_idx + 1;
+            let mut idx2 = value_idx + 2;
+            let mut idx3 = value_idx + 3;
+
+            for i in start_idx..end_idx {
+                decoded[idx0] = encoded[start_idx][i];
+                decoded[idx1] = encoded[i][end_idx];
+                decoded[idx2] = encoded[end_idx][start_idx + end_idx - i];
+                decoded[idx3] = encoded[start_idx + end_idx - i][start_idx];
+
+                idx0 += 4;
+                idx1 += 4;
+                idx2 += 4;
+                idx3 += 4;
+            }
+
+            idx3 - 3
+        }
+    }
+
+    fn run_test(s1: &str, s2: &str) {
+        assert_eq!(&encode(s1), s2);
+        assert_eq!(&decode(s2), s1);
+    }
+
+    #[test]
+    fn example_test_1() {
+        let example_1a = "Romani ite domum";
+        let example_1b = "Rntodomiimuea  m";
+        run_test(example_1a, example_1b);
+    }
+
+    #[test]
+    fn example_test_2() {
+        let example_2a = "Sic transit gloria mundi";
+        let example_2b = "Stsgiriuar i ninmd l otac";
+        run_test(example_2a, example_2b);
+    }
+
+    #[test]
+    fn example_test_3() {
+        let example_3a = "When the going gets tough, the tough get going";
+        let example_3b = "W  nethghho ,t t ngeggh  gugiti ogteteg  onus ohe";
+        run_test(example_3a, example_3b);
+    }
+
+    #[test]
+    fn example_test_4() {
+        let example_4a =
+            "I am so clever that sometimes I don't understand a single word of what I'm saying";
+        let example_4b =
+            "I cehsts  dtdt ioselerfa  lesI'amder dhngy aatsosi taovno w wni 'g nrun mImmt eoa";
+        run_test(example_4a, example_4b);
+    }
+}
