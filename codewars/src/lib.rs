@@ -1968,3 +1968,185 @@ mod isc {
         run_test(example_4a, example_4b);
     }
 }
+
+mod assembler_interpreter {
+
+    use self::Instruction::*;
+    use std::collections::HashMap;
+
+    #[derive(Debug)]
+    enum Instruction {
+        Movl(String, i64),
+        Movr(String, String),
+        Inc(String),
+        Dec(String),
+        Jnzl(i64, i64),
+        Jnzr(String, i64),
+    }
+
+    #[derive(Debug)]
+    struct Program {
+        instructions: Vec<Instruction>,
+    }
+
+    impl Program {
+        fn ins(&self, address: i64) -> &Instruction {
+            &self.instructions[address as usize]
+        }
+
+        fn len(&self) -> i64 {
+            self.instructions.len() as i64
+        }
+    }
+
+    impl From<Vec<&str>> for Program {
+        fn from(program: Vec<&str>) -> Self {
+            let instructions = program
+                .iter()
+                .map(|ins| ins.split_whitespace().collect::<Vec<&str>>())
+                .map(|ins| match ins[..] {
+                    ["mov", reg, src] => {
+                        if let Ok(lit) = src.parse::<i64>() {
+                            Movl(reg.to_string(), lit)
+                        } else {
+                            Movr(reg.to_string(), src.to_string())
+                        }
+                    }
+                    ["inc", reg] => Inc(reg.to_string()),
+                    ["dec", reg] => Dec(reg.to_string()),
+                    ["jnz", cond, jmp] => {
+                        let jmp = jmp.parse::<i64>().unwrap_or(0);
+                        if let Ok(lit) = cond.parse::<i64>() {
+                            Jnzl(lit, jmp)
+                        } else {
+                            Jnzr(cond.to_string(), jmp)
+                        }
+                    }
+                    _ => unreachable!(),
+                })
+                .collect();
+
+            Self { instructions }
+        }
+    }
+
+    struct Interpreter {
+        registers: HashMap<String, i64>,
+        address: i64,
+    }
+
+    impl Interpreter {
+        fn new() -> Self {
+            Self {
+                registers: HashMap::new(),
+                address: 0,
+            }
+        }
+
+        fn run(&mut self, program: Program) {
+            loop {
+                match program.ins(self.address) {
+                    Movl(reg, lit) => self.mov(reg, *lit),
+                    Movr(reg, src) => self.mov(reg, self.lit(src)),
+                    Inc(reg) => self.inc(reg),
+                    Dec(reg) => self.dec(reg),
+                    Jnzl(cond, jmp) => self.jnz(*cond, *jmp),
+                    Jnzr(reg, jmp) => self.jnz(self.lit(reg), *jmp),
+                };
+
+                if self.address >= program.len() {
+                    break;
+                }
+            }
+        }
+
+        fn lit(&self, register: &str) -> i64 {
+            *self.registers.get(register).unwrap()
+        }
+
+        fn mov(&mut self, register: &str, literal: i64) {
+            self.registers.insert(register.to_string(), literal);
+            self.address += 1;
+        }
+
+        fn inc(&mut self, register: &str) {
+            if let Some(v) = self.registers.get_mut(register) {
+                *v += 1;
+            }
+            self.address += 1;
+        }
+
+        fn dec(&mut self, register: &str) {
+            if let Some(v) = self.registers.get_mut(register) {
+                *v -= 1;
+            }
+            self.address += 1;
+        }
+
+        fn jnz(&mut self, cond: i64, jmp: i64) {
+            if cond != 0 {
+                self.address += jmp;
+            } else {
+                self.address += 1;
+            }
+        }
+    }
+
+    fn simple_assembler(program: Vec<&str>) -> HashMap<String, i64> {
+        let program = Program::from(program);
+
+        let mut interpreter = Interpreter::new();
+
+        interpreter.run(program);
+
+        interpreter.registers
+    }
+
+    mod tests {
+        use super::*;
+
+        macro_rules! map {
+        ($($key:expr => $value:expr),*) => {{
+             let mut map = HashMap::new();
+             $(
+                 map.insert($key.to_string(), $value);
+             )*
+             map
+        }};
+    }
+
+        #[test]
+        fn short_tests() {
+            let program = vec!["mov a 5", "inc a", "dec a", "dec a", "jnz a -1", "inc a"];
+            let expected = map! { "a" => 1 };
+            compare_registers(expected, simple_assembler(program));
+
+            let program = vec![
+                "mov c 12",
+                "mov b 0",
+                "mov a 200",
+                "dec a",
+                "inc b",
+                "jnz a -2",
+                "dec c",
+                "mov a b",
+                "jnz c -5",
+                "jnz 0 1",
+                "mov c a",
+            ];
+            let expected = map! { "a" => 409600, "c" => 409600, "b" => 409600};
+            compare_registers(expected, simple_assembler(program));
+        }
+
+        fn compare_registers(expected: HashMap<String, i64>, actual: HashMap<String, i64>) {
+            let result = expected
+                .iter()
+                .all(|(key, value)| actual.get(key).map(|v| v == value).unwrap_or(false));
+            assert!(
+                result,
+                "Expected the registers to be like that:\n{:#?}\n\nBut got this:\n{:#?}\n",
+                expected, actual
+            )
+        }
+    }
+}
