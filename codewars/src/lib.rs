@@ -1987,13 +1987,6 @@ mod assembler_interpreter {
                 _ => Value::Register(value.to_string()),
             }
         }
-
-        fn load(&self, registers: &HashMap<String, i64>) -> i64 {
-            match self {
-                Value::Register(r) => *registers.get(r).unwrap(),
-                Value::Literal(c) => *c,
-            }
-        }
     }
 
     #[derive(Debug)]
@@ -2001,6 +1994,10 @@ mod assembler_interpreter {
         Mov(String, Value),
         Inc(String),
         Dec(String),
+        Add(String, Value),
+        Sub(String, Value),
+        Mul(String, Value),
+        Div(String, Value),
         Jnz(Value, i64),
     }
 
@@ -2025,9 +2022,13 @@ mod assembler_interpreter {
                 .iter()
                 .map(|ins| ins.split_whitespace().collect::<Vec<&str>>())
                 .map(|ins| match ins[..] {
-                    ["mov", reg, src] => Mov(reg.to_string(), Value::from_str(src)),
+                    ["mov", reg, val] => Mov(reg.to_string(), Value::from_str(val)),
                     ["inc", reg] => Inc(reg.to_string()),
                     ["dec", reg] => Dec(reg.to_string()),
+                    ["add", reg, val] => Add(reg.to_string(), Value::from_str(val)),
+                    ["sub", reg, val] => Sub(reg.to_string(), Value::from_str(val)),
+                    ["mul", reg, val] => Mul(reg.to_string(), Value::from_str(val)),
+                    ["div", reg, val] => Div(reg.to_string(), Value::from_str(val)),
                     ["jnz", cond, jmp] => Jnz(Value::from_str(cond), jmp.parse::<i64>().unwrap()),
                     _ => unreachable!(),
                 })
@@ -2058,18 +2059,25 @@ mod assembler_interpreter {
         fn run(&mut self, program: Program) {
             while self.program_counter < program.len() {
                 match program.instruction(self.program_counter) {
-                    Mov(reg, value) => self.mov(reg, value.load(&self.registers)),
+                    Mov(reg, val) => self.mov(reg, self.load(val)),
                     Inc(reg) => self.inc(reg),
                     Dec(reg) => self.dec(reg),
-                    Jnz(value, jmp) => self.jnz(value.load(&self.registers), *jmp),
+                    Add(reg, val) => self.add(reg, self.load(val)),
+                    Sub(reg, val) => self.sub(reg, self.load(val)),
+                    Mul(reg, val) => self.mul(reg, self.load(val)),
+                    Div(reg, val) => self.div(reg, self.load(val)),
+                    Jnz(val, jmp) => self.jnz(self.load(val), *jmp),
                 };
 
                 self.program_counter += 1;
             }
         }
 
-        fn lit(&self, register: &str) -> i64 {
-            *self.registers.get(register).unwrap()
+        fn load(&self, value: &Value) -> i64 {
+            match value {
+                Value::Register(r) => *self.registers.get(r).unwrap(),
+                Value::Literal(c) => *c,
+            }
         }
 
         fn mov(&mut self, register: &str, literal: i64) {
@@ -2085,6 +2093,30 @@ mod assembler_interpreter {
         fn dec(&mut self, register: &str) {
             if let Some(v) = self.registers.get_mut(register) {
                 *v -= 1;
+            }
+        }
+
+        fn add(&mut self, register: &str, literal: i64) {
+            if let Some(v) = self.registers.get_mut(register) {
+                *v += literal;
+            }
+        }
+
+        fn sub(&mut self, register: &str, literal: i64) {
+            if let Some(v) = self.registers.get_mut(register) {
+                *v -= literal;
+            }
+        }
+
+        fn mul(&mut self, register: &str, literal: i64) {
+            if let Some(v) = self.registers.get_mut(register) {
+                *v *= literal;
+            }
+        }
+
+        fn div(&mut self, register: &str, literal: i64) {
+            if let Some(v) = self.registers.get_mut(register) {
+                *v /= literal;
             }
         }
 
@@ -2118,6 +2150,50 @@ mod assembler_interpreter {
              )*
              map
         }}}
+
+        #[test]
+        fn test_addition() {
+            let program = vec!["mov a 5", "mov b 10", "add a b"];
+            let expected = map! { "a" => 15 };
+            compare_registers(expected, simple_assembler(program));
+
+            let program = vec!["mov a 5", "add a 10"];
+            let expected = map! { "a" => 15 };
+            compare_registers(expected, simple_assembler(program));
+        }
+
+        #[test]
+        fn test_subtraction() {
+            let program = vec!["mov a 5", "mov b 10", "sub a b"];
+            let expected = map! { "a" => -5 };
+            compare_registers(expected, simple_assembler(program));
+
+            let program = vec!["mov a 5", "sub a 10"];
+            let expected = map! { "a" => -5 };
+            compare_registers(expected, simple_assembler(program));
+        }
+
+        #[test]
+        fn test_multiplication() {
+            let program = vec!["mov a 5", "mov b 10", "mul a b"];
+            let expected = map! { "a" => 50 };
+            compare_registers(expected, simple_assembler(program));
+
+            let program = vec!["mov a 5", "mul a 10"];
+            let expected = map! { "a" => 50 };
+            compare_registers(expected, simple_assembler(program));
+        }
+
+        #[test]
+        fn test_division() {
+            let program = vec!["mov a 20", "mov b 5", "div a b"];
+            let expected = map! { "a" => 4 };
+            compare_registers(expected, simple_assembler(program));
+
+            let program = vec!["mov a 20", "div a 5"];
+            let expected = map! { "a" => 4 };
+            compare_registers(expected, simple_assembler(program));
+        }
 
         #[test]
         fn short_tests() {
