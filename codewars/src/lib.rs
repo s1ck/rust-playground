@@ -1989,6 +1989,8 @@ mod assembler_interpreter {
         }
     }
 
+    type Label = String;
+
     #[derive(Debug)]
     enum Instruction {
         Mov(String, Value),
@@ -1998,10 +2000,13 @@ mod assembler_interpreter {
         Sub(String, Value),
         Mul(String, Value),
         Div(String, Value),
-        Lbl(String),
-        Jmp(String),
+        Label(Label),
+        Jmp(Label),
+        Call(Label),
+        Ret,
         Jnz(Value, i64),
         Msg(String),
+        End,
     }
 
     #[derive(Debug)]
@@ -2042,11 +2047,14 @@ mod assembler_interpreter {
                     [label] if label.ends_with(":") => {
                         let label = label.trim_end_matches(":");
                         labels.insert(label.to_string(), i as i64);
-                        Lbl(label.to_string())
+                        Label(label.to_string())
                     }
                     ["jmp", label] => Jmp(label.to_string()),
+                    ["call", label] => Call(label.to_string()),
+                    ["ret"] => Ret,
                     ["jnz", cond, jmp] => Jnz(Value::from_str(cond), jmp.parse::<i64>().unwrap()),
                     ["msg", ..] => Msg(program[i].split_at(3).1.to_string()),
+                    ["end"] => End,
                     _ => unreachable!(),
                 })
                 .collect();
@@ -2062,6 +2070,7 @@ mod assembler_interpreter {
         int_registers: HashMap<String, i64>,
         program_counter: i64,
         output_register: Option<String>,
+        stack: Vec<i64>,
     }
 
     impl AssemblerInterpreter {
@@ -2075,10 +2084,11 @@ mod assembler_interpreter {
                 int_registers: HashMap::new(),
                 program_counter: 0,
                 output_register: None,
+                stack: Vec::new(),
             }
         }
 
-        fn run(&mut self, program: Program) {
+        fn run(&mut self, program: Program) -> Option<String> {
             while self.program_counter < program.len() {
                 match program.instruction(self.program_counter) {
                     Mov(reg, val) => self.mov(reg, self.load(val)),
@@ -2088,14 +2098,33 @@ mod assembler_interpreter {
                     Sub(reg, val) => self.sub(reg, self.load(val)),
                     Mul(reg, val) => self.mul(reg, self.load(val)),
                     Div(reg, val) => self.div(reg, self.load(val)),
-                    Lbl(_) => { /* silence is golden */ }
-                    Jmp(lbl) => self.jmp(program.label_index(lbl)),
+                    Label(_) => { /* silence is golden */ }
+                    Jmp(label) => self.jmp(program.label_index(label)),
+                    Ret => self.ret(),
+                    Call(label) => self.call(program.label_index(label)),
                     Jnz(val, jmp) => self.jnz(self.load(val), *jmp),
                     Msg(text) => self.msg(text),
+                    End => break,
                 };
 
                 self.program_counter += 1;
             }
+
+            if matches!(program.instruction(self.program_counter - 1), End) {
+                self.output_register.clone()
+            } else {
+                None
+            }
+        }
+
+        fn call(&mut self, address: i64) {
+            self.stack.push(self.program_counter);
+            self.jmp(address);
+        }
+
+        fn ret(&mut self) {
+            let ret_address = self.stack.pop().unwrap();
+            self.jmp(ret_address);
         }
 
         fn load(&self, value: &Value) -> i64 {
@@ -2262,6 +2291,24 @@ mod assembler_interpreter {
             let program = vec!["mov a 42", "jmp woop", "mov b 1337", "woop:"];
             let expected = map! { "a" => 42 };
             compare_registers(expected, simple_assembler(program).0);
+        }
+
+        #[test]
+        fn test_call_ret() {
+            let program = vec![
+                "mov a 42",
+                "mov b 1337",
+                "call sum",
+                "msg 'a = ', a",
+                "end",
+                "sum:",
+                "add a b",
+                "ret",
+            ];
+            let (int_registers, string_register) = simple_assembler(program);
+
+            compare_registers(map! { "a" => 1379, "b" => 1337 }, int_registers);
+            assert_eq!(Some(String::from("a = 1379")), string_register);
         }
 
         #[test]
