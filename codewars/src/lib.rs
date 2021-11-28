@@ -1975,13 +1975,33 @@ mod assembler_interpreter {
     use std::collections::HashMap;
 
     #[derive(Debug)]
+    enum Value {
+        Register(String),
+        Literal(i64),
+    }
+
+    impl Value {
+        fn from_str(value: &str) -> Self {
+            match value.parse::<i64>() {
+                Ok(literal) => Value::Literal(literal),
+                _ => Value::Register(value.to_string()),
+            }
+        }
+
+        fn load(&self, registers: &HashMap<String, i64>) -> i64 {
+            match self {
+                Value::Register(r) => *registers.get(r).unwrap(),
+                Value::Literal(c) => *c,
+            }
+        }
+    }
+
+    #[derive(Debug)]
     enum Instruction {
-        Movl(String, i64),
-        Movr(String, String),
+        Mov(String, Value),
         Inc(String),
         Dec(String),
-        Jnzl(i64, i64),
-        Jnzr(String, i64),
+        Jnz(Value, i64),
     }
 
     #[derive(Debug)]
@@ -1990,8 +2010,8 @@ mod assembler_interpreter {
     }
 
     impl Program {
-        fn ins(&self, address: i64) -> &Instruction {
-            &self.instructions[address as usize]
+        fn instruction(&self, index: i64) -> &Instruction {
+            &self.instructions[index as usize]
         }
 
         fn len(&self) -> i64 {
@@ -2005,23 +2025,10 @@ mod assembler_interpreter {
                 .iter()
                 .map(|ins| ins.split_whitespace().collect::<Vec<&str>>())
                 .map(|ins| match ins[..] {
-                    ["mov", reg, src] => {
-                        if let Ok(lit) = src.parse::<i64>() {
-                            Movl(reg.to_string(), lit)
-                        } else {
-                            Movr(reg.to_string(), src.to_string())
-                        }
-                    }
+                    ["mov", reg, src] => Mov(reg.to_string(), Value::from_str(src)),
                     ["inc", reg] => Inc(reg.to_string()),
                     ["dec", reg] => Dec(reg.to_string()),
-                    ["jnz", cond, jmp] => {
-                        let jmp = jmp.parse::<i64>().unwrap_or(0);
-                        if let Ok(lit) = cond.parse::<i64>() {
-                            Jnzl(lit, jmp)
-                        } else {
-                            Jnzr(cond.to_string(), jmp)
-                        }
-                    }
+                    ["jnz", cond, jmp] => Jnz(Value::from_str(cond), jmp.parse::<i64>().unwrap()),
                     _ => unreachable!(),
                 })
                 .collect();
@@ -2030,33 +2037,34 @@ mod assembler_interpreter {
         }
     }
 
-    struct Interpreter {
+    struct AssemblerInterpreter {
         registers: HashMap<String, i64>,
-        address: i64,
+        program_counter: i64,
     }
 
-    impl Interpreter {
+    impl AssemblerInterpreter {
+        // Used by Assembler Interpreter - Part 2
+        pub fn interpret(input: &str) -> Option<String> {
+            unimplemented!();
+        }
+
         fn new() -> Self {
             Self {
                 registers: HashMap::new(),
-                address: 0,
+                program_counter: 0,
             }
         }
 
         fn run(&mut self, program: Program) {
-            loop {
-                match program.ins(self.address) {
-                    Movl(reg, lit) => self.mov(reg, *lit),
-                    Movr(reg, src) => self.mov(reg, self.lit(src)),
+            while self.program_counter < program.len() {
+                match program.instruction(self.program_counter) {
+                    Mov(reg, value) => self.mov(reg, value.load(&self.registers)),
                     Inc(reg) => self.inc(reg),
                     Dec(reg) => self.dec(reg),
-                    Jnzl(cond, jmp) => self.jnz(*cond, *jmp),
-                    Jnzr(reg, jmp) => self.jnz(self.lit(reg), *jmp),
+                    Jnz(value, jmp) => self.jnz(value.load(&self.registers), *jmp),
                 };
 
-                if self.address >= program.len() {
-                    break;
-                }
+                self.program_counter += 1;
             }
         }
 
@@ -2066,36 +2074,33 @@ mod assembler_interpreter {
 
         fn mov(&mut self, register: &str, literal: i64) {
             self.registers.insert(register.to_string(), literal);
-            self.address += 1;
         }
 
         fn inc(&mut self, register: &str) {
             if let Some(v) = self.registers.get_mut(register) {
                 *v += 1;
             }
-            self.address += 1;
         }
 
         fn dec(&mut self, register: &str) {
             if let Some(v) = self.registers.get_mut(register) {
                 *v -= 1;
             }
-            self.address += 1;
         }
 
         fn jnz(&mut self, cond: i64, jmp: i64) {
             if cond != 0 {
-                self.address += jmp;
-            } else {
-                self.address += 1;
+                // - 1 because the main loop increments program counter
+                self.program_counter += jmp - 1;
             }
         }
     }
 
+    // Used by Assembler Interpreter - Part 1
     fn simple_assembler(program: Vec<&str>) -> HashMap<String, i64> {
         let program = Program::from(program);
 
-        let mut interpreter = Interpreter::new();
+        let mut interpreter = AssemblerInterpreter::new();
 
         interpreter.run(program);
 
@@ -2112,8 +2117,7 @@ mod assembler_interpreter {
                  map.insert($key.to_string(), $value);
              )*
              map
-        }};
-    }
+        }}}
 
         #[test]
         fn short_tests() {
@@ -2147,6 +2151,36 @@ mod assembler_interpreter {
                 "Expected the registers to be like that:\n{:#?}\n\nBut got this:\n{:#?}\n",
                 expected, actual
             )
+        }
+
+        // Tests for Assembler Interpreter - Part 2
+        use std::collections::HashSet;
+
+        #[test]
+        fn simple_test() {
+            let simple_programs = &[
+            "\n; My first program\nmov  a, 5\ninc  a\ncall function\nmsg  '(5+1)/2 = ', a    ; output message\nend\n\nfunction:\n    div  a, 2\n    ret\n",
+            "\nmov   a, 5\nmov   b, a\nmov   c, a\ncall  proc_fact\ncall  print\nend\n\nproc_fact:\n    dec   b\n    mul   c, b\n    cmp   b, 1\n    jne   proc_fact\n    ret\n\nprint:\n    msg   a, '! = ', c ; output text\n    ret\n",
+            "\nmov   a, 8            ; value\nmov   b, 0            ; next\nmov   c, 0            ; counter\nmov   d, 0            ; first\nmov   e, 1            ; second\ncall  proc_fib\ncall  print\nend\n\nproc_fib:\n    cmp   c, 2\n    jl    func_0\n    mov   b, d\n    add   b, e\n    mov   d, e\n    mov   e, b\n    inc   c\n    cmp   c, a\n    jle   proc_fib\n    ret\n\nfunc_0:\n    mov   b, c\n    inc   c\n    jmp   proc_fib\n\nprint:\n    msg   'Term ', a, ' of Fibonacci series is: ', b        ; output text\n    ret\n",
+            "\nmov   a, 11           ; value1\nmov   b, 3            ; value2\ncall  mod_func\nmsg   'mod(', a, ', ', b, ') = ', d        ; output\nend\n\n; Mod function\nmod_func:\n    mov   c, a        ; temp1\n    div   c, b\n    mul   c, b\n    mov   d, a        ; temp2\n    sub   d, c\n    ret\n",
+            "\nmov   a, 81         ; value1\nmov   b, 153        ; value2\ncall  init\ncall  proc_gcd\ncall  print\nend\n\nproc_gcd:\n    cmp   c, d\n    jne   loop\n    ret\n\nloop:\n    cmp   c, d\n    jg    a_bigger\n    jmp   b_bigger\n\na_bigger:\n    sub   c, d\n    jmp   proc_gcd\n\nb_bigger:\n    sub   d, c\n    jmp   proc_gcd\n\ninit:\n    cmp   a, 0\n    jl    a_abs\n    cmp   b, 0\n    jl    b_abs\n    mov   c, a            ; temp1\n    mov   d, b            ; temp2\n    ret\n\na_abs:\n    mul   a, -1\n    jmp   init\n\nb_abs:\n    mul   b, -1\n    jmp   init\n\nprint:\n    msg   'gcd(', a, ', ', b, ') = ', c\n    ret\n",
+            "\ncall  func1\ncall  print\nend\n\nfunc1:\n    call  func2\n    ret\n\nfunc2:\n    ret\n\nprint:\n    msg 'This program should return null'\n",
+            "\nmov   a, 2            ; value1\nmov   b, 10           ; value2\nmov   c, a            ; temp1\nmov   d, b            ; temp2\ncall  proc_func\ncall  print\nend\n\nproc_func:\n    cmp   d, 1\n    je    continue\n    mul   c, a\n    dec   d\n    call  proc_func\n\ncontinue:\n    ret\n\nprint:\n    msg a, '^', b, ' = ', c\n    ret\n"];
+
+            let expected = &[
+                Some(String::from("(5+1)/2 = 3")),
+                Some(String::from("5! = 120")),
+                Some(String::from("Term 8 of Fibonacci series is: 21")),
+                Some(String::from("mod(11, 3) = 2")),
+                Some(String::from("gcd(81, 153) = 9")),
+                None,
+                Some(String::from("2^10 = 1024")),
+            ];
+
+            for (prg, exp) in simple_programs.iter().zip(expected) {
+                let actual = AssemblerInterpreter::interpret(*prg);
+                assert_eq!(actual, *exp);
+            }
         }
     }
 }
