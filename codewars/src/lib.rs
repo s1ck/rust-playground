@@ -1998,6 +1998,8 @@ mod assembler_interpreter {
         Sub(String, Value),
         Mul(String, Value),
         Div(String, Value),
+        Lbl(String),
+        Jmp(String),
         Jnz(Value, i64),
         Msg(String),
     }
@@ -2005,11 +2007,16 @@ mod assembler_interpreter {
     #[derive(Debug)]
     struct Program {
         instructions: Vec<Instruction>,
+        labels: HashMap<String, i64>,
     }
 
     impl Program {
         fn instruction(&self, index: i64) -> &Instruction {
             &self.instructions[index as usize]
+        }
+
+        fn label_index(&self, label: &str) -> i64 {
+            *self.labels.get(label).unwrap()
         }
 
         fn len(&self) -> i64 {
@@ -2019,6 +2026,7 @@ mod assembler_interpreter {
 
     impl From<Vec<&str>> for Program {
         fn from(program: Vec<&str>) -> Self {
+            let mut labels = HashMap::new();
             let instructions = program
                 .iter()
                 .enumerate()
@@ -2031,13 +2039,22 @@ mod assembler_interpreter {
                     ["sub", reg, val] => Sub(reg.to_string(), Value::from_str(val)),
                     ["mul", reg, val] => Mul(reg.to_string(), Value::from_str(val)),
                     ["div", reg, val] => Div(reg.to_string(), Value::from_str(val)),
+                    [label] if label.ends_with(":") => {
+                        let label = label.trim_end_matches(":");
+                        labels.insert(label.to_string(), i as i64);
+                        Lbl(label.to_string())
+                    }
+                    ["jmp", label] => Jmp(label.to_string()),
                     ["jnz", cond, jmp] => Jnz(Value::from_str(cond), jmp.parse::<i64>().unwrap()),
                     ["msg", ..] => Msg(program[i].split_at(3).1.to_string()),
                     _ => unreachable!(),
                 })
                 .collect();
 
-            Self { instructions }
+            Self {
+                instructions,
+                labels,
+            }
         }
     }
 
@@ -2071,6 +2088,8 @@ mod assembler_interpreter {
                     Sub(reg, val) => self.sub(reg, self.load(val)),
                     Mul(reg, val) => self.mul(reg, self.load(val)),
                     Div(reg, val) => self.div(reg, self.load(val)),
+                    Lbl(_) => { /* silence is golden */ }
+                    Jmp(lbl) => self.jmp(program.label_index(lbl)),
                     Jnz(val, jmp) => self.jnz(self.load(val), *jmp),
                     Msg(text) => self.msg(text),
                 };
@@ -2124,6 +2143,10 @@ mod assembler_interpreter {
             if let Some(v) = self.int_registers.get_mut(register) {
                 *v /= literal;
             }
+        }
+
+        fn jmp(&mut self, address: i64) {
+            self.program_counter = address;
         }
 
         fn jnz(&mut self, cond: i64, jmp: i64) {
@@ -2225,6 +2248,20 @@ mod assembler_interpreter {
             let expected = Some(String::from("a = 42 b = 1337"));
 
             assert_eq!(expected, simple_assembler(program).1);
+        }
+
+        #[test]
+        fn test_label() {
+            let program = vec!["foobar:", "mov a 42"];
+            let expected = map! { "a" => 42 };
+            compare_registers(expected, simple_assembler(program).0);
+        }
+
+        #[test]
+        fn test_jump() {
+            let program = vec!["mov a 42", "jmp woop", "mov b 1337", "woop:"];
+            let expected = map! { "a" => 42 };
+            compare_registers(expected, simple_assembler(program).0);
         }
 
         #[test]
