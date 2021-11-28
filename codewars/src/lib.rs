@@ -2053,7 +2053,14 @@ mod assembler_interpreter {
                     ["call", label] => Call(label.to_string()),
                     ["ret"] => Ret,
                     ["jnz", cond, jmp] => Jnz(Value::from_str(cond), jmp.parse::<i64>().unwrap()),
-                    ["msg", ..] => Msg(program[i].split_at(3).1.to_string()),
+                    ["msg", ..] => {
+                        let mut args = program[i].split_at(3).1;
+                        // remove comments
+                        if let Some(idx) = args.rfind(';') {
+                            args = args.split_at(idx).0.trim();
+                        }
+                        Msg(args.to_string())
+                    }
                     ["end"] => End,
                     _ => unreachable!(),
                 })
@@ -2274,6 +2281,18 @@ mod assembler_interpreter {
         #[test]
         fn test_message() {
             let program = vec!["mov a 42", "mov b 1337", "msg 'a = ', a, ' b = ', b"];
+            let expected = Some(String::from("a = 42 b = 1337"));
+
+            assert_eq!(expected, simple_assembler(program).1);
+        }
+
+        #[test]
+        fn test_message_with_comment() {
+            let program = vec![
+                "mov a 42",
+                "mov b 1337",
+                "msg 'a = ', a, ' b = ', b     ; comment",
+            ];
             let expected = Some(String::from("a = 42 b = 1337"));
 
             assert_eq!(expected, simple_assembler(program).1);
