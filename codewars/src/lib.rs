@@ -2398,3 +2398,105 @@ mod assembler_interpreter {
         }
     }
 }
+
+mod spiralize {
+
+    fn spiralize(size: usize) -> Vec<Vec<i8>> {
+        let size = size + 2;
+        let mut spiral = vec![vec![0_i8; size]; size];
+
+        let mut x = 1;
+        let mut y = 0;
+        let mut length = size;
+
+        while length >= 3 {
+            spiral_out(&mut spiral, x, y, length - 2);
+            x += 2;
+            y += 2;
+            length = length.saturating_sub(4);
+        }
+
+        spiral.iter_mut().for_each(|row| {
+            row.rotate_left(1);
+            row.pop();
+            row.pop();
+        });
+
+        return (spiral[1..spiral.len() - 1]).to_vec();
+
+        fn spiral_out(square: &mut [Vec<i8>], x: usize, y: usize, length: usize) {
+            // top
+            for i in y..y + length {
+                square[x][i] = 1;
+            }
+            // right
+            for i in x..x + length {
+                square[i][y + length] = 1;
+            }
+            // bottom
+            for i in y + 2..y + length {
+                square[x + length - 1][i] = 1;
+            }
+            // left
+            for i in x + 2..x + length {
+                square[i][y + 1] = 1;
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+
+        use super::*;
+
+        #[test]
+        fn test5() {
+            assert_eq!(
+                spiralize(5),
+                [
+                    [1, 1, 1, 1, 1],
+                    [0, 0, 0, 0, 1],
+                    [1, 1, 1, 0, 1],
+                    [1, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1],
+                ],
+            );
+        }
+
+        #[test]
+        fn test8() {
+            assert_eq!(
+                spiralize(8),
+                [
+                    [1, 1, 1, 1, 1, 1, 1, 1],
+                    [0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 0, 1],
+                    [1, 0, 0, 0, 0, 1, 0, 1],
+                    [1, 0, 1, 0, 0, 1, 0, 1],
+                    [1, 0, 1, 1, 1, 1, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1],
+                ],
+            );
+        }
+
+        #[test]
+        fn test10() {
+            assert_eq!(
+                spiralize(10),
+                [
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+                    [1, 0, 1, 1, 1, 1, 0, 1, 0, 1],
+                    [1, 0, 1, 0, 0, 1, 0, 1, 0, 1],
+                    [1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+                    [1, 0, 1, 1, 1, 1, 1, 1, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                ],
+            );
+        }
+    }
+}
