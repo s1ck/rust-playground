@@ -2500,3 +2500,138 @@ mod spiralize {
         }
     }
 }
+
+mod duplicate_encoder {
+    use std::collections::HashMap;
+
+    fn duplicate_encode(word: &str) -> String {
+        let word = word.to_lowercase();
+
+        let counts = word.chars().fold(HashMap::new(), |mut map, c| {
+            *map.entry(c).or_insert(0) += 1;
+            map
+        });
+
+        word.chars()
+            .map(|c| match counts.get(&c).unwrap() {
+                1 => '(',
+                _ => ')',
+            })
+            .collect()
+    }
+
+    #[cfg(test)]
+    mod tests {
+
+        use super::*;
+
+        #[test]
+        fn run_tests() {
+            assert_eq!(duplicate_encode("din"), "(((");
+            assert_eq!(duplicate_encode("recede"), "()()()");
+            assert_eq!(duplicate_encode("Success"), ")())())", "should ignore case");
+            assert_eq!(duplicate_encode("(( @"), "))((");
+        }
+    }
+}
+
+mod weight_for_weight {
+
+    fn order_weight(s: &str) -> String {
+        let mut weights = s.split(' ').collect::<Vec<_>>();
+        weights.sort_unstable_by_key(|w| {
+            (w.chars().map(|c| c.to_digit(10).unwrap()).sum::<u32>(), *w)
+        });
+        weights.into_iter().collect::<Vec<_>>().join(" ")
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn testing(s: &str, exp: &str) -> () {
+            assert_eq!(order_weight(s), exp)
+        }
+
+        #[test]
+        fn basics_order_weight() {
+            testing("103 123 4444 99 2000", "2000 103 123 4444 99");
+            testing(
+                "2000 10003 1234000 44444444 9999 11 11 22 123",
+                "11 11 2000 10003 22 123 1234000 44444444 9999",
+            );
+        }
+    }
+}
+
+mod playing_with_digits {
+
+    fn dig_pow(n: i64, p: i32) -> i64 {
+        let (sum, _) = n
+            .to_string()
+            .chars()
+            .map(|c| c.to_digit(10).unwrap() as i64)
+            .fold((0_i64, p as u32), |(mut sum, mut p), d| {
+                (sum + d.pow(p), p + 1)
+            });
+
+        (sum % n == 0).then(|| sum / n).unwrap_or(-1)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn dotest(n: i64, p: i32, exp: i64) -> () {
+            println!(" n: {:?};", n);
+            println!("p: {:?};", p);
+            let ans = dig_pow(n, p);
+            println!(" actual:\n{:?};", ans);
+            println!("expect:\n{:?};", exp);
+            println!(" {};", ans == exp);
+            assert_eq!(ans, exp);
+            println!("{};", "-");
+        }
+
+        #[test]
+        fn basic_tests() {
+            dotest(89, 1, 1);
+            dotest(92, 1, -1);
+            dotest(46288, 3, 51);
+        }
+    }
+}
+
+mod perimeter {
+
+    fn perimeter(n: u64) -> u64 {
+        let mut fib_n = 0;
+        let mut fib_m = 1;
+        let mut fib_s = 1;
+
+        for _ in 1..=n {
+            fib_m = fib_n + fib_m;
+            fib_n = fib_m - fib_n;
+            fib_s += fib_m;
+        }
+
+        fib_s * 4
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn dotest(n: u64, exp: u64) -> () {
+            assert_eq!(perimeter(n), exp)
+        }
+
+        #[test]
+        fn basics_perimeter() {
+            dotest(5, 80);
+            dotest(7, 216);
+            dotest(20, 114624);
+            dotest(30, 14098308);
+        }
+    }
+}
