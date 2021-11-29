@@ -2038,67 +2038,59 @@ mod assembler_interpreter {
 
     impl From<Vec<&str>> for Program {
         fn from(program: Vec<&str>) -> Self {
-            fn strip(s: &str) -> String {
-                if s.ends_with(',') {
-                    s[..s.len() - 1].to_string()
-                } else {
-                    s.to_string()
-                }
-            }
-
             let mut labels = HashMap::new();
             let instructions = program
                 .iter()
-                .map(|line| line.trim())
-                .map(|line| line.split(";").next().unwrap())
-                .filter(|line| !line.is_empty())
-                .filter_map(|line| {
-                    if let Some(idx) = line.rfind(";") {
-                        Some(line.split_at(idx).0.trim())
-                    } else {
-                        Some(line)
-                    }
+                .map(|line| match line.split_once(";") {
+                    Some((line, _)) => line,
+                    None => line,
                 })
+                .map(|line| line.trim())
+                .filter(|line| !line.is_empty())
                 .enumerate()
-                .map(|(i, ins)| (i, ins.split_whitespace().collect::<Vec<&str>>()))
-                .map(|(i, ins)| match ins[..] {
-                    ["mov", reg, val] => Mov(strip(reg), Value::from_str(val)),
-                    ["inc", reg] => Inc(reg.to_string()),
-                    ["dec", reg] => Dec(reg.to_string()),
-                    ["add", reg, val] => Add(strip(reg), Value::from_str(val)),
-                    ["sub", reg, val] => Sub(strip(reg), Value::from_str(val)),
-                    ["mul", reg, val] => Mul(strip(reg), Value::from_str(val)),
-                    ["div", reg, val] => Div(strip(reg), Value::from_str(val)),
-                    [label] if label.ends_with(":") => {
+                .map(|(i, ins)| {
+                    let (op, raw_args) = ins.split_once(' ').unwrap_or((ins, ""));
+                    // Kata Part 1 uses ' ' to split args, Part 2 uses ','
+                    let args = if raw_args.contains(',') {
+                        raw_args.split(',')
+                    } else {
+                        raw_args.split(' ')
+                    }
+                    .map(str::trim)
+                    .filter(|arg| !arg.is_empty())
+                    .collect::<Vec<_>>();
+
+                    (i, op, args, raw_args)
+                })
+                .map(|(i, op, args, raw_args)| match (op, &args[..]) {
+                    ("mov", &[reg, val]) => Mov(reg.to_string(), Value::from_str(val)),
+                    ("inc", &[reg]) => Inc(reg.to_string()),
+                    ("dec", &[reg]) => Dec(reg.to_string()),
+                    ("add", &[reg, val]) => Add(reg.to_string(), Value::from_str(val)),
+                    ("sub", &[reg, val]) => Sub(reg.to_string(), Value::from_str(val)),
+                    ("mul", &[reg, val]) => Mul(reg.to_string(), Value::from_str(val)),
+                    ("div", &[reg, val]) => Div(reg.to_string(), Value::from_str(val)),
+                    ("jmp", &[label]) => Jmp(label.to_string()),
+                    ("call", &[label]) => Call(label.to_string()),
+                    ("ret", _) => Ret,
+                    ("cmp", &[left, right]) => Cmp(Value::from_str(left), Value::from_str(right)),
+                    ("jne", &[label]) => Jne(label.to_string()),
+                    ("je", &[label]) => Je(label.to_string()),
+                    ("jge", &[label]) => Jge(label.to_string()),
+                    ("jg", &[label]) => Jg(label.to_string()),
+                    ("jle", &[label]) => Jle(label.to_string()),
+                    ("jl", &[label]) => Jl(label.to_string()),
+                    ("jnz", &[cond, jmp]) => {
+                        Jnz(Value::from_str(cond), jmp.parse::<i64>().unwrap())
+                    }
+                    ("msg", args) => Msg(raw_args.to_string()),
+                    ("end", _) => End,
+                    (label, _) if label.ends_with(":") => {
                         let label = label.trim_end_matches(":");
                         labels.insert(label.to_string(), i as i64);
                         Label(label.to_string())
                     }
-                    ["jmp", label] => Jmp(label.to_string()),
-                    ["call", label] => Call(label.to_string()),
-                    ["ret"] => Ret,
-                    ["cmp", left, right] => Cmp(
-                        Value::from_str(strip(left).as_str()),
-                        Value::from_str(right),
-                    ),
-                    ["jne", label] => Jne(label.to_string()),
-                    ["je", label] => Je(label.to_string()),
-                    ["jge", label] => Jge(label.to_string()),
-                    ["jg", label] => Jg(label.to_string()),
-                    ["jle", label] => Jle(label.to_string()),
-                    ["jl", label] => Jl(label.to_string()),
-                    ["jnz", cond, jmp] => Jnz(Value::from_str(cond), jmp.parse::<i64>().unwrap()),
-                    ["msg", ..] => {
-                        // rebuild arguments
-                        let mut args = ins[1..].iter().map(|p| *p).collect::<Vec<_>>().join(" ");
-                        // remove comments
-                        if let Some(idx) = args.rfind(';') {
-                            args = args.split_at(idx).0.trim().to_string();
-                        }
-                        Msg(args)
-                    }
-                    ["end"] => End,
-                    _ => unreachable!(),
+                    (op, args) => panic!("unexpected op '{}' and args {:?}", op, args),
                 })
                 .collect();
 
