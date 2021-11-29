@@ -2004,6 +2004,13 @@ mod assembler_interpreter {
         Jmp(Label),
         Call(Label),
         Ret,
+        Cmp(Value, Value),
+        Jne(Label),
+        Je(Label),
+        Jge(Label),
+        Jg(Label),
+        Jle(Label),
+        Jl(Label),
         Jnz(Value, i64),
         Msg(String),
         End,
@@ -2031,19 +2038,37 @@ mod assembler_interpreter {
 
     impl From<Vec<&str>> for Program {
         fn from(program: Vec<&str>) -> Self {
+            fn strip(s: &str) -> String {
+                if s.ends_with(',') {
+                    s[..s.len() - 1].to_string()
+                } else {
+                    s.to_string()
+                }
+            }
+
             let mut labels = HashMap::new();
             let instructions = program
                 .iter()
+                .map(|line| line.trim())
+                .map(|line| line.split(";").next().unwrap())
+                .filter(|line| !line.is_empty())
+                .filter_map(|line| {
+                    if let Some(idx) = line.rfind(";") {
+                        Some(line.split_at(idx).0.trim())
+                    } else {
+                        Some(line)
+                    }
+                })
                 .enumerate()
                 .map(|(i, ins)| (i, ins.split_whitespace().collect::<Vec<&str>>()))
                 .map(|(i, ins)| match ins[..] {
-                    ["mov", reg, val] => Mov(reg.to_string(), Value::from_str(val)),
+                    ["mov", reg, val] => Mov(strip(reg), Value::from_str(val)),
                     ["inc", reg] => Inc(reg.to_string()),
                     ["dec", reg] => Dec(reg.to_string()),
-                    ["add", reg, val] => Add(reg.to_string(), Value::from_str(val)),
-                    ["sub", reg, val] => Sub(reg.to_string(), Value::from_str(val)),
-                    ["mul", reg, val] => Mul(reg.to_string(), Value::from_str(val)),
-                    ["div", reg, val] => Div(reg.to_string(), Value::from_str(val)),
+                    ["add", reg, val] => Add(strip(reg), Value::from_str(val)),
+                    ["sub", reg, val] => Sub(strip(reg), Value::from_str(val)),
+                    ["mul", reg, val] => Mul(strip(reg), Value::from_str(val)),
+                    ["div", reg, val] => Div(strip(reg), Value::from_str(val)),
                     [label] if label.ends_with(":") => {
                         let label = label.trim_end_matches(":");
                         labels.insert(label.to_string(), i as i64);
@@ -2052,14 +2077,25 @@ mod assembler_interpreter {
                     ["jmp", label] => Jmp(label.to_string()),
                     ["call", label] => Call(label.to_string()),
                     ["ret"] => Ret,
+                    ["cmp", left, right] => Cmp(
+                        Value::from_str(strip(left).as_str()),
+                        Value::from_str(right),
+                    ),
+                    ["jne", label] => Jne(label.to_string()),
+                    ["je", label] => Je(label.to_string()),
+                    ["jge", label] => Jge(label.to_string()),
+                    ["jg", label] => Jg(label.to_string()),
+                    ["jle", label] => Jle(label.to_string()),
+                    ["jl", label] => Jl(label.to_string()),
                     ["jnz", cond, jmp] => Jnz(Value::from_str(cond), jmp.parse::<i64>().unwrap()),
                     ["msg", ..] => {
-                        let mut args = program[i].split_at(3).1;
+                        // rebuild arguments
+                        let mut args = ins[1..].iter().map(|p| *p).collect::<Vec<_>>().join(" ");
                         // remove comments
                         if let Some(idx) = args.rfind(';') {
-                            args = args.split_at(idx).0.trim();
+                            args = args.split_at(idx).0.trim().to_string();
                         }
-                        Msg(args.to_string())
+                        Msg(args)
                     }
                     ["end"] => End,
                     _ => unreachable!(),
@@ -2083,7 +2119,9 @@ mod assembler_interpreter {
     impl AssemblerInterpreter {
         // Used by Assembler Interpreter - Part 2
         pub fn interpret(input: &str) -> Option<String> {
-            unimplemented!();
+            let program = Program::from(input.split("\n").collect::<Vec<_>>());
+            let mut interpreter = AssemblerInterpreter::new();
+            interpreter.run(program)
         }
 
         fn new() -> Self {
@@ -2105,23 +2143,34 @@ mod assembler_interpreter {
                     Sub(reg, val) => self.sub(reg, self.load(val)),
                     Mul(reg, val) => self.mul(reg, self.load(val)),
                     Div(reg, val) => self.div(reg, self.load(val)),
-                    Label(_) => { /* silence is golden */ }
                     Jmp(label) => self.jmp(program.label_index(label)),
                     Ret => self.ret(),
                     Call(label) => self.call(program.label_index(label)),
+                    Cmp(left, right) => {
+                        let left = self.load(left);
+                        let right = self.load(right);
+                        self.program_counter += 1;
+                        match program.instruction(self.program_counter) {
+                            Jne(label) => self.jne(program.label_index(label), left, right),
+                            Je(label) => self.je(program.label_index(label), left, right),
+                            Jge(label) => self.jge(program.label_index(label), left, right),
+                            Jg(label) => self.jg(program.label_index(label), left, right),
+                            Jle(label) => self.jle(program.label_index(label), left, right),
+                            Jl(label) => self.jl(program.label_index(label), left, right),
+                            op => panic!("expected jmp operation, got {:?}", op),
+                        };
+                    }
                     Jnz(val, jmp) => self.jnz(self.load(val), *jmp),
                     Msg(text) => self.msg(text),
-                    End => break,
+                    Label(_) => { /* silence is golden */ }
+                    End => return self.output_register.clone(),
+                    op => panic!("unexpected op {:?}", op),
                 };
 
                 self.program_counter += 1;
             }
 
-            if matches!(program.instruction(self.program_counter - 1), End) {
-                self.output_register.clone()
-            } else {
-                None
-            }
+            None
         }
 
         fn call(&mut self, address: i64) {
@@ -2185,6 +2234,42 @@ mod assembler_interpreter {
             self.program_counter = address;
         }
 
+        fn jne(&mut self, address: i64, left: i64, right: i64) {
+            if left != right {
+                self.jmp(address);
+            }
+        }
+
+        fn je(&mut self, address: i64, left: i64, right: i64) {
+            if left == right {
+                self.jmp(address);
+            }
+        }
+
+        fn jge(&mut self, address: i64, left: i64, right: i64) {
+            if left >= right {
+                self.jmp(address);
+            }
+        }
+
+        fn jg(&mut self, address: i64, left: i64, right: i64) {
+            if left > right {
+                self.jmp(address);
+            }
+        }
+
+        fn jle(&mut self, address: i64, left: i64, right: i64) {
+            if left <= right {
+                self.jmp(address);
+            }
+        }
+
+        fn jl(&mut self, address: i64, left: i64, right: i64) {
+            if left < right {
+                self.jmp(address);
+            }
+        }
+
         fn jnz(&mut self, cond: i64, jmp: i64) {
             if cond != 0 {
                 // - 1 because the main loop increments program counter
@@ -2193,13 +2278,33 @@ mod assembler_interpreter {
         }
 
         fn msg(&mut self, text: &str) {
+            let text = text
+                .chars()
+                .fold((String::new(), false), |(mut res, mut quoted), next| {
+                    let c = match next {
+                        '\'' if !quoted => {
+                            quoted = true;
+                            '\''
+                        }
+                        '\'' => {
+                            quoted = false;
+                            '\''
+                        }
+                        ',' if quoted => ';',
+                        c => c,
+                    };
+                    res.push(c);
+                    (res, quoted)
+                })
+                .0;
+
             let msg = text
                 .split(",")
                 .into_iter()
                 .map(str::trim)
                 .map(|s| {
                     if s.starts_with("'") {
-                        s.replace("'", "")
+                        s.replace("'", "").replace(";", ",")
                     } else {
                         let register = Value::from_str(s);
                         format!("{}", self.load(&register))
@@ -2376,7 +2481,9 @@ mod assembler_interpreter {
             "\nmov   a, 11           ; value1\nmov   b, 3            ; value2\ncall  mod_func\nmsg   'mod(', a, ', ', b, ') = ', d        ; output\nend\n\n; Mod function\nmod_func:\n    mov   c, a        ; temp1\n    div   c, b\n    mul   c, b\n    mov   d, a        ; temp2\n    sub   d, c\n    ret\n",
             "\nmov   a, 81         ; value1\nmov   b, 153        ; value2\ncall  init\ncall  proc_gcd\ncall  print\nend\n\nproc_gcd:\n    cmp   c, d\n    jne   loop\n    ret\n\nloop:\n    cmp   c, d\n    jg    a_bigger\n    jmp   b_bigger\n\na_bigger:\n    sub   c, d\n    jmp   proc_gcd\n\nb_bigger:\n    sub   d, c\n    jmp   proc_gcd\n\ninit:\n    cmp   a, 0\n    jl    a_abs\n    cmp   b, 0\n    jl    b_abs\n    mov   c, a            ; temp1\n    mov   d, b            ; temp2\n    ret\n\na_abs:\n    mul   a, -1\n    jmp   init\n\nb_abs:\n    mul   b, -1\n    jmp   init\n\nprint:\n    msg   'gcd(', a, ', ', b, ') = ', c\n    ret\n",
             "\ncall  func1\ncall  print\nend\n\nfunc1:\n    call  func2\n    ret\n\nfunc2:\n    ret\n\nprint:\n    msg 'This program should return null'\n",
-            "\nmov   a, 2            ; value1\nmov   b, 10           ; value2\nmov   c, a            ; temp1\nmov   d, b            ; temp2\ncall  proc_func\ncall  print\nend\n\nproc_func:\n    cmp   d, 1\n    je    continue\n    mul   c, a\n    dec   d\n    call  proc_func\n\ncontinue:\n    ret\n\nprint:\n    msg a, '^', b, ' = ', c\n    ret\n"];
+            "\nmov   a, 2            ; value1\nmov   b, 10           ; value2\nmov   c, a            ; temp1\nmov   d, b            ; temp2\ncall  proc_func\ncall  print\nend\n\nproc_func:\n    cmp   d, 1\n    je    continue\n    mul   c, a\n    dec   d\n    call  proc_func\n\ncontinue:\n    ret\n\nprint:\n    msg a, '^', b, ' = ', c\n    ret\n",
+            "\nmov c, 72   ; instruction mov c, 72\n mov e, 176   ; instruction mov e, 176\n call func\n msg 'Random result: ', s\n end\n func:\n cmp c, e\n je exit\n mov s, c\n add s, e\n ret\n ; Do nothing\n exit:\n msg 'Do nothing'\n"
+                ];
 
             let expected = &[
                 Some(String::from("(5+1)/2 = 3")),
@@ -2386,6 +2493,7 @@ mod assembler_interpreter {
                 Some(String::from("gcd(81, 153) = 9")),
                 None,
                 Some(String::from("2^10 = 1024")),
+                Some(String::from("Random result: 248")),
             ];
 
             for (prg, exp) in simple_programs.iter().zip(expected) {
