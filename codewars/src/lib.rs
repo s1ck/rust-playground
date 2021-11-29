@@ -2060,7 +2060,7 @@ mod assembler_interpreter {
                     .filter(|arg| !arg.is_empty())
                     .collect::<Vec<_>>();
 
-                    (i, op, args, raw_args)
+                    (i, op, args, raw_args.trim())
                 })
                 .map(|(i, op, args, raw_args)| match (op, &args[..]) {
                     ("mov", &[reg, val]) => Mov(reg.to_string(), Value::from_str(val)),
@@ -2125,9 +2125,9 @@ mod assembler_interpreter {
             }
         }
 
-        fn run(&mut self, program: Program) -> Option<String> {
-            while self.program_counter < program.len() {
-                match program.instruction(self.program_counter) {
+        fn run(&mut self, p: Program) -> Option<String> {
+            while self.program_counter < p.len() {
+                match p.instruction(self.program_counter) {
                     Mov(reg, val) => self.mov(reg, self.load(val)),
                     Inc(reg) => self.inc(reg),
                     Dec(reg) => self.dec(reg),
@@ -2135,20 +2135,20 @@ mod assembler_interpreter {
                     Sub(reg, val) => self.sub(reg, self.load(val)),
                     Mul(reg, val) => self.mul(reg, self.load(val)),
                     Div(reg, val) => self.div(reg, self.load(val)),
-                    Jmp(label) => self.jmp(program.label_index(label)),
+                    Jmp(label) => self.jmp(p.label_index(label)),
                     Ret => self.ret(),
-                    Call(label) => self.call(program.label_index(label)),
+                    Call(label) => self.call(p.label_index(label)),
                     Cmp(left, right) => {
                         let left = self.load(left);
                         let right = self.load(right);
                         self.program_counter += 1;
-                        match program.instruction(self.program_counter) {
-                            Jne(label) => self.jne(program.label_index(label), left, right),
-                            Je(label) => self.je(program.label_index(label), left, right),
-                            Jge(label) => self.jge(program.label_index(label), left, right),
-                            Jg(label) => self.jg(program.label_index(label), left, right),
-                            Jle(label) => self.jle(program.label_index(label), left, right),
-                            Jl(label) => self.jl(program.label_index(label), left, right),
+                        match p.instruction(self.program_counter) {
+                            Jne(label) => self.jne(p.label_index(label), left, right),
+                            Je(label) => self.je(p.label_index(label), left, right),
+                            Jge(label) => self.jge(p.label_index(label), left, right),
+                            Jg(label) => self.jg(p.label_index(label), left, right),
+                            Jle(label) => self.jle(p.label_index(label), left, right),
+                            Jl(label) => self.jl(p.label_index(label), left, right),
                             op => panic!("expected jmp operation, got {:?}", op),
                         };
                     }
@@ -2269,42 +2269,29 @@ mod assembler_interpreter {
             }
         }
 
-        fn msg(&mut self, text: &str) {
-            let text = text
-                .chars()
-                .fold((String::new(), false), |(mut res, mut quoted), next| {
-                    let c = match next {
-                        '\'' if !quoted => {
-                            quoted = true;
-                            '\''
-                        }
-                        '\'' => {
-                            quoted = false;
-                            '\''
-                        }
-                        ',' if quoted => ';',
-                        c => c,
-                    };
-                    res.push(c);
-                    (res, quoted)
-                })
-                .0;
+        fn msg(&mut self, mut text: &str) {
+            let mut output = vec![];
 
-            let msg = text
-                .split(",")
-                .into_iter()
-                .map(str::trim)
-                .map(|s| {
-                    if s.starts_with("'") {
-                        s.replace("'", "").replace(";", ",")
-                    } else {
-                        let register = Value::from_str(s);
-                        format!("{}", self.load(&register))
+            while !text.is_empty() {
+                if let Some(rest) = text.strip_prefix('\'') {
+                    if let Some(end) = rest.find('\'') {
+                        let (arg, rest) = rest.split_at(end);
+                        output.push(arg.to_string());
+                        text = rest.trim_start_matches(['\'', ',', ' '].as_ref());
                     }
-                })
-                .collect::<String>();
+                } else if let Some(end) = text.find(',') {
+                    let (arg, rest) = text.split_at(end);
+                    let reg = Value::from_str(arg.trim());
+                    output.push(format!("{}", self.load(&reg)));
+                    text = rest.trim_start_matches(',').trim();
+                } else if !text.is_empty() {
+                    let reg = Value::from_str(text);
+                    output.push(format!("{}", self.load(&reg)));
+                    text = "";
+                }
+            }
 
-            self.output_register = Some(msg);
+            self.output_register = Some(output.into_iter().collect::<String>());
         }
     }
 
