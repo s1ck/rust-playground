@@ -1972,6 +1972,7 @@ mod isc {
 mod assembler_interpreter {
 
     use self::Instruction::*;
+    use std::cmp::Ordering;
     use std::collections::HashMap;
 
     #[derive(Debug)]
@@ -2027,8 +2028,8 @@ mod assembler_interpreter {
             &self.instructions[index as usize]
         }
 
-        fn label_index(&self, label: &str) -> i64 {
-            *self.labels.get(label).unwrap()
+        fn label(&self, label: &str) -> i64 {
+            self.labels[label]
         }
 
         fn len(&self) -> i64 {
@@ -2102,10 +2103,11 @@ mod assembler_interpreter {
     }
 
     struct AssemblerInterpreter {
-        int_registers: HashMap<String, i64>,
+        registers: HashMap<String, i64>,
         program_counter: i64,
-        output_register: Option<String>,
+        output: Option<String>,
         stack: Vec<i64>,
+        last_compare: Ordering,
     }
 
     impl AssemblerInterpreter {
@@ -2118,45 +2120,42 @@ mod assembler_interpreter {
 
         fn new() -> Self {
             Self {
-                int_registers: HashMap::new(),
+                registers: HashMap::new(),
                 program_counter: 0,
-                output_register: None,
+                output: None,
                 stack: Vec::new(),
+                last_compare: Ordering::Equal,
             }
         }
 
         fn run(&mut self, p: Program) -> Option<String> {
             while self.program_counter < p.len() {
                 match p.instruction(self.program_counter) {
-                    Mov(reg, val) => self.mov(reg, self.load(val)),
-                    Inc(reg) => self.inc(reg),
-                    Dec(reg) => self.dec(reg),
-                    Add(reg, val) => self.add(reg, self.load(val)),
-                    Sub(reg, val) => self.sub(reg, self.load(val)),
-                    Mul(reg, val) => self.mul(reg, self.load(val)),
-                    Div(reg, val) => self.div(reg, self.load(val)),
-                    Jmp(label) => self.jmp(p.label_index(label)),
-                    Ret => self.ret(),
-                    Call(label) => self.call(p.label_index(label)),
-                    Cmp(left, right) => {
-                        let left = self.load(left);
-                        let right = self.load(right);
-                        self.program_counter += 1;
-                        match p.instruction(self.program_counter) {
-                            Jne(label) => self.jne(p.label_index(label), left, right),
-                            Je(label) => self.je(p.label_index(label), left, right),
-                            Jge(label) => self.jge(p.label_index(label), left, right),
-                            Jg(label) => self.jg(p.label_index(label), left, right),
-                            Jle(label) => self.jle(p.label_index(label), left, right),
-                            Jl(label) => self.jl(p.label_index(label), left, right),
-                            op => panic!("expected jmp operation, got {:?}", op),
-                        };
+                    Mov(reg, val) => {
+                        self.registers.insert(reg.to_string(), self.load(val));
                     }
-                    Jnz(val, jmp) => self.jnz(self.load(val), *jmp),
+                    Inc(reg) => *self.registers.get_mut(reg).unwrap() += 1,
+                    Dec(reg) => *self.registers.get_mut(reg).unwrap() -= 1,
+                    Add(reg, val) => *self.registers.get_mut(reg).unwrap() += self.load(val),
+                    Sub(reg, val) => *self.registers.get_mut(reg).unwrap() -= self.load(val),
+                    Mul(reg, val) => *self.registers.get_mut(reg).unwrap() *= self.load(val),
+                    Div(reg, val) => *self.registers.get_mut(reg).unwrap() /= self.load(val),
+                    Jmp(label) => self.jmp(p.label(label)),
+                    Ret => self.ret(),
+                    Call(label) => self.call(p.label(label)),
+                    Cmp(left, right) => {
+                        self.last_compare = self.load(left).cmp(&self.load(right));
+                    }
+                    Jne(label) if self.last_compare.is_ne() => self.jmp(p.label(label)),
+                    Je(label) if self.last_compare.is_eq() => self.jmp(p.label(label)),
+                    Jge(label) if self.last_compare.is_ge() => self.jmp(p.label(label)),
+                    Jg(label) if self.last_compare.is_gt() => self.jmp(p.label(label)),
+                    Jle(label) if self.last_compare.is_le() => self.jmp(p.label(label)),
+                    Jl(label) if self.last_compare.is_lt() => self.jmp(p.label(label)),
+                    Jnz(val, jmp) if self.load(val) != 0 => self.program_counter += jmp - 1,
                     Msg(text) => self.msg(text),
-                    Label(_) => { /* silence is golden */ }
-                    End => return self.output_register.clone(),
-                    op => panic!("unexpected op {:?}", op),
+                    End => return self.output.clone(),
+                    op => {}
                 };
 
                 self.program_counter += 1;
@@ -2177,96 +2176,13 @@ mod assembler_interpreter {
 
         fn load(&self, value: &Value) -> i64 {
             match value {
-                Value::Register(r) => *self.int_registers.get(r).unwrap(),
+                Value::Register(r) => *self.registers.get(r).unwrap(),
                 Value::Literal(c) => *c,
-            }
-        }
-
-        fn mov(&mut self, register: &str, literal: i64) {
-            self.int_registers.insert(register.to_string(), literal);
-        }
-
-        fn inc(&mut self, register: &str) {
-            if let Some(v) = self.int_registers.get_mut(register) {
-                *v += 1;
-            }
-        }
-
-        fn dec(&mut self, register: &str) {
-            if let Some(v) = self.int_registers.get_mut(register) {
-                *v -= 1;
-            }
-        }
-
-        fn add(&mut self, register: &str, literal: i64) {
-            if let Some(v) = self.int_registers.get_mut(register) {
-                *v += literal;
-            }
-        }
-
-        fn sub(&mut self, register: &str, literal: i64) {
-            if let Some(v) = self.int_registers.get_mut(register) {
-                *v -= literal;
-            }
-        }
-
-        fn mul(&mut self, register: &str, literal: i64) {
-            if let Some(v) = self.int_registers.get_mut(register) {
-                *v *= literal;
-            }
-        }
-
-        fn div(&mut self, register: &str, literal: i64) {
-            if let Some(v) = self.int_registers.get_mut(register) {
-                *v /= literal;
             }
         }
 
         fn jmp(&mut self, address: i64) {
             self.program_counter = address;
-        }
-
-        fn jne(&mut self, address: i64, left: i64, right: i64) {
-            if left != right {
-                self.jmp(address);
-            }
-        }
-
-        fn je(&mut self, address: i64, left: i64, right: i64) {
-            if left == right {
-                self.jmp(address);
-            }
-        }
-
-        fn jge(&mut self, address: i64, left: i64, right: i64) {
-            if left >= right {
-                self.jmp(address);
-            }
-        }
-
-        fn jg(&mut self, address: i64, left: i64, right: i64) {
-            if left > right {
-                self.jmp(address);
-            }
-        }
-
-        fn jle(&mut self, address: i64, left: i64, right: i64) {
-            if left <= right {
-                self.jmp(address);
-            }
-        }
-
-        fn jl(&mut self, address: i64, left: i64, right: i64) {
-            if left < right {
-                self.jmp(address);
-            }
-        }
-
-        fn jnz(&mut self, cond: i64, jmp: i64) {
-            if cond != 0 {
-                // - 1 because the main loop increments program counter
-                self.program_counter += jmp - 1;
-            }
         }
 
         fn msg(&mut self, mut text: &str) {
@@ -2291,7 +2207,7 @@ mod assembler_interpreter {
                 }
             }
 
-            self.output_register = Some(output.into_iter().collect::<String>());
+            self.output = Some(output.into_iter().collect::<String>());
         }
     }
 
@@ -2303,7 +2219,7 @@ mod assembler_interpreter {
 
         interpreter.run(program);
 
-        (interpreter.int_registers, interpreter.output_register)
+        (interpreter.registers, interpreter.output)
     }
 
     mod tests {
